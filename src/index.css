@@ -1,96 +1,70 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 220 20% 6%;
+    --foreground: 180 10% 85%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 220 18% 10%;
+    --card-foreground: 180 10% 85%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 220 18% 10%;
+    --popover-foreground: 180 10% 85%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 160 60% 45%;
+    --primary-foreground: 220 20% 6%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 220 15% 16%;
+    --secondary-foreground: 180 10% 75%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 15% 14%;
+    --muted-foreground: 220 10% 50%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 200 80% 50%;
+    --accent-foreground: 220 20% 6%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 220 20% 6%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 220 20% 6%;
+
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 160 60% 45%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
+    --chart-1: 160 60% 45%;
+    --chart-2: 200 80% 50%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 0 72% 51%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --panel-glow: 160 60% 45%;
+    --panel-header: 220 18% 12%;
+    --status-live: 0 72% 51%;
+    --status-active: 160 60% 45%;
+    --status-warning: 38 92% 50%;
 
-    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-background: 220 20% 8%;
+    --sidebar-foreground: 180 10% 85%;
+    --sidebar-primary: 160 60% 45%;
+    --sidebar-primary-foreground: 220 20% 6%;
+    --sidebar-accent: 220 15% 16%;
+    --sidebar-accent-foreground: 180 10% 85%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 160 60% 45%;
 
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-sans: 'Inter', sans-serif;
   }
 }
 
@@ -101,5 +75,106 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
   }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-mono);
+  }
+}
+
+@layer utilities {
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  .font-sans {
+    font-family: var(--font-sans);
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 15px -3px hsl(var(--primary) / 0.3),
+                0 0 6px -4px hsl(var(--primary) / 0.2);
+  }
+
+  .glow-accent {
+    box-shadow: 0 0 15px -3px hsl(var(--accent) / 0.3);
+  }
+
+  .glow-warning {
+    box-shadow: 0 0 15px -3px hsl(var(--warning) / 0.3);
+  }
+
+  .glow-destructive {
+    box-shadow: 0 0 15px -3px hsl(var(--destructive) / 0.3);
+  }
+
+  .panel-border {
+    border: 1px solid hsl(var(--border));
+    background: linear-gradient(
+      180deg,
+      hsl(var(--panel-header)) 0%,
+      hsl(var(--card)) 100%
+    );
+  }
+
+  .scanline {
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      hsl(var(--primary) / 0.03) 2px,
+      hsl(var(--primary) / 0.03) 4px
+    );
+  }
+
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  .status-dot-live {
+    @apply status-dot bg-destructive;
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  .status-dot-active {
+    @apply status-dot;
+    background-color: hsl(var(--success));
+  }
+
+  .text-gradient {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary)) 0%,
+      hsl(var(--accent)) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gauge-track {
+    stroke: hsl(var(--muted));
+    fill: none;
+  }
+
+  .gauge-fill {
+    fill: none;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s ease-in-out;
+  }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes slide-in-data {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-in {
+  animation: slide-in-data 0.5s ease-out forwards;
 }
