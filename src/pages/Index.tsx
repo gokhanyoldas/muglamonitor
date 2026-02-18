@@ -7,6 +7,7 @@ import { TransportSection } from "@/components/dashboard/sections/TransportSecti
 import { EnergySection } from "@/components/dashboard/sections/EnergySection";
 import { SecuritySection } from "@/components/dashboard/sections/SecuritySection";
 import { CultureAgriSection } from "@/components/dashboard/sections/CultureAgriSection";
+import { SocialIntelSection } from "@/components/dashboard/sections/SocialIntelSection";
 
 const Index = () => {
   return (
@@ -46,6 +47,7 @@ const Index = () => {
             <CultureAgriSection />
           </div>
           <div className="space-y-3">
+            <SocialIntelSection />
             <SocialSection />
             <TransportSection />
             <EnergySection />
