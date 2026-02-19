@@ -9,20 +9,27 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { keywords, platform } = await req.json();
+    const { keywords, platform, collected_data } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const keywordList = Array.isArray(keywords) ? keywords.join(", ") : keywords;
-    const platformText = platform === "all" ? "tüm sosyal medya platformları" : platform;
+    const platformText = platform === "all" ? "tüm platformlar" : platform;
 
-    const systemPrompt = `Sen Muğla bölgesi için bir sosyal medya istihbarat analistisin. 
+    // Include real collected data in context if available
+    let collectedContext = "";
+    if (collected_data && Array.isArray(collected_data) && collected_data.length > 0) {
+      collectedContext = `\n\nAşağıda gerçek zamanlı toplanan veri var, analizini buna dayandır:\n${JSON.stringify(collected_data.slice(0, 20), null, 1)}`;
+    }
+
+    const systemPrompt = `Sen Muğla bölgesi için sosyal medya ve haber istihbarat analistisin.
 Kullanıcının takip ettiği anahtar kelimelerle ilgili ${platformText} üzerindeki güncel durumu analiz et.
+Gerçek dünya bilgilerine ve sana verilen verilere dayanarak kapsamlı bir analiz yap.
 Yanıtını MUTLAKA aşağıdaki JSON formatında ver, başka hiçbir metin ekleme:
 {
   "analyses": [
     {
-      "platform": "twitter|instagram|facebook|youtube",
+      "platform": "twitter|instagram|facebook|youtube|news|web",
       "content": "İçerik özeti (max 200 karakter)",
       "sentiment": "positive|negative|neutral",
       "sentiment_score": 0.0-1.0,
@@ -38,8 +45,15 @@ Yanıtını MUTLAKA aşağıdaki JSON formatında ver, başka hiçbir metin ekle
     "neutral_ratio": 0.0-1.0,
     "top_topics": ["konu1", "konu2", "konu3"],
     "overall_sentiment": "positive|negative|neutral",
-    "key_insights": "Genel değerlendirme paragrafı"
-  }
+    "key_insights": "Genel değerlendirme paragrafı (3-5 cümle)"
+  },
+  "alerts": [
+    {
+      "label": "Uyarı başlığı",
+      "value": "Detay bilgi",
+      "severity": "ok|warning|critical"
+    }
+  ]
 }`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -52,7 +66,7 @@ Yanıtını MUTLAKA aşağıdaki JSON formatında ver, başka hiçbir metin ekle
         model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Anahtar kelimeler: ${keywordList}\nPlatform: ${platformText}\nBölge: Muğla, Türkiye\nLütfen bu kelimelerle ilgili güncel sosyal medya istihbaratını analiz et.` },
+          { role: "user", content: `Anahtar kelimeler: ${keywordList}\nPlatform: ${platformText}\nBölge: Muğla, Türkiye\nTarih: ${new Date().toISOString().split('T')[0]}\nLütfen bu kelimelerle ilgili güncel sosyal medya ve haber istihbaratını analiz et.${collectedContext}` },
         ],
       }),
     });
@@ -78,7 +92,6 @@ Yanıtını MUTLAKA aşağıdaki JSON formatında ver, başka hiçbir metin ekle
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || "";
 
-    // Parse JSON from response
     let parsed;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
