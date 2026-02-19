@@ -1,1 +1,7 @@
 project_id = "gsjypruivdsiufaeqtoc"
+
+[functions.social-analyze]
+verify_jwt = false
+
+[functions.social-collect]
+verify_jwt = false
