@@ -70,7 +70,10 @@ const platformLabels: Record<string, string> = {
 };
 
 const SocialIntel = () => {
-  const [keywords, setKeywords] = useState<string[]>(["Muğla", "Bodrum", "Fethiye", "Marmaris", "turizm", "yangın", "belediye", "havalimanı"]);
+  const [keywords, setKeywords] = useState<string[]>(() => {
+    const saved = localStorage.getItem("social-intel-keywords");
+    return saved ? JSON.parse(saved) : ["Muğla", "Bodrum", "Fethiye", "Marmaris", "turizm", "yangın", "belediye", "havalimanı"];
+  });
   const [newKeyword, setNewKeyword] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState("all");
   const [isCollecting, setIsCollecting] = useState(false);
@@ -81,6 +84,10 @@ const SocialIntel = () => {
   const [collectedItems, setCollectedItems] = useState<CollectedItem[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    localStorage.setItem("social-intel-keywords", JSON.stringify(keywords));
+  }, [keywords]);
 
   const addKeyword = () => {
     if (newKeyword.trim() && !keywords.includes(newKeyword.trim())) {
