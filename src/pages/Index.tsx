@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { DashboardHeader, type DashboardTab } from "@/components/dashboard/DashboardHeader";
 import { EconomySection } from "@/components/dashboard/sections/EconomySection";
 import { EnvironmentSection } from "@/components/dashboard/sections/EnvironmentSection";
@@ -10,25 +10,14 @@ import { SecuritySection } from "@/components/dashboard/sections/SecuritySection
 import { CultureAgriSection } from "@/components/dashboard/sections/CultureAgriSection";
 import { SocialIntelSection } from "@/components/dashboard/sections/SocialIntelSection";
 
-const sectionMap: Record<DashboardTab, React.ReactNode> = {
-  genel: null, // special: show all
-  ekonomi: <EconomySection />,
-  cevre: <EnvironmentSection />,
-  turizm: (
-    <>
-      <TourismSection />
-      <CultureAgriSection />
-    </>
-  ),
-  ulasim: <TransportSection />,
-  sosyal: (
-    <>
-      <SocialIntelSection />
-      <SocialSection />
-    </>
-  ),
-  guvenlik: <SecuritySection />,
-  enerji: <EnergySection />,
+const sectionComponents: Record<Exclude<DashboardTab, "genel">, React.FC[]> = {
+  ekonomi: [EconomySection],
+  cevre: [EnvironmentSection],
+  turizm: [TourismSection, CultureAgriSection],
+  ulasim: [TransportSection],
+  sosyal: [SocialIntelSection, SocialSection],
+  guvenlik: [SecuritySection],
+  enerji: [EnergySection],
 };
 
 const Index = () => {
@@ -82,10 +71,12 @@ const Index = () => {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <div className="space-y-3">
-              {sectionMap[activeTab]}
-            </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
+            {sectionComponents[activeTab as Exclude<DashboardTab, "genel">]?.map((Section, i) => (
+              <div key={i} className="space-y-3">
+                <Section />
+              </div>
+            ))}
           </div>
         )}
 
