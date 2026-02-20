@@ -83,21 +83,26 @@ const SocialIntel = () => {
   const [trendSummary, setTrendSummary] = useState<TrendSummary | null>(null);
   const [collectedItems, setCollectedItems] = useState<CollectedItem[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [hasUnsavedKeywords, setHasUnsavedKeywords] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
+  const saveKeywords = () => {
     localStorage.setItem("social-intel-keywords", JSON.stringify(keywords));
-  }, [keywords]);
+    setHasUnsavedKeywords(false);
+    toast({ title: "Kaydedildi", description: "Anahtar kelimeler başarıyla kaydedildi." });
+  };
 
   const addKeyword = () => {
     if (newKeyword.trim() && !keywords.includes(newKeyword.trim())) {
       setKeywords([...keywords, newKeyword.trim()]);
       setNewKeyword("");
+      setHasUnsavedKeywords(true);
     }
   };
 
   const removeKeyword = (kw: string) => {
     setKeywords(keywords.filter(k => k !== kw));
+    setHasUnsavedKeywords(true);
   };
 
   const collectData = useCallback(async () => {
@@ -236,6 +241,11 @@ const SocialIntel = () => {
                   </span>
                 ))}
               </div>
+              {hasUnsavedKeywords && (
+                <button onClick={saveKeywords} className="w-full mt-2 flex items-center justify-center gap-1.5 bg-success/20 border border-success/30 text-success rounded py-1.5 text-[11px] font-mono font-semibold hover:bg-success/30 transition-colors">
+                  KAYDET
+                </button>
+              )}
             </DashboardPanel>
 
             <DashboardPanel title="Platform Filtresi" icon={<Globe size={14} />}>
