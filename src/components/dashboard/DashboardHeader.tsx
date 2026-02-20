@@ -1,6 +1,24 @@
 import { useState, useEffect } from "react";
 
-export const DashboardHeader = () => {
+export type DashboardTab = "genel" | "ekonomi" | "cevre" | "turizm" | "ulasim" | "sosyal" | "guvenlik" | "enerji";
+
+interface DashboardHeaderProps {
+  activeTab?: DashboardTab;
+  onTabChange?: (tab: DashboardTab) => void;
+}
+
+const tabs: { label: string; value: DashboardTab }[] = [
+  { label: "Genel Bakış", value: "genel" },
+  { label: "Ekonomi", value: "ekonomi" },
+  { label: "Çevre", value: "cevre" },
+  { label: "Turizm", value: "turizm" },
+  { label: "Ulaşım", value: "ulasim" },
+  { label: "Sosyal", value: "sosyal" },
+  { label: "Güvenlik", value: "guvenlik" },
+  { label: "Enerji", value: "enerji" },
+];
+
+export const DashboardHeader = ({ activeTab = "genel", onTabChange }: DashboardHeaderProps) => {
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -65,16 +83,17 @@ export const DashboardHeader = () => {
 
       {/* Category tabs */}
       <div className="flex items-center gap-1 px-4 py-1.5 overflow-x-auto scrollbar-hide border-t border-border/50">
-        {["Genel Bakış", "Ekonomi", "Çevre", "Turizm", "Ulaşım", "Sosyal", "Güvenlik", "Enerji"].map((tab, i) => (
+        {tabs.map((tab) => (
           <button
-            key={tab}
+            key={tab.value}
+            onClick={() => onTabChange?.(tab.value)}
             className={`text-[10px] font-mono px-3 py-1 rounded whitespace-nowrap transition-colors ${
-              i === 0
+              activeTab === tab.value
                 ? "bg-primary/20 text-primary border border-primary/30"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
             }`}
           >
-            {tab}
+            {tab.label}
           </button>
         ))}
       </div>

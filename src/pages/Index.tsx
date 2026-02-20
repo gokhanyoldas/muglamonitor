@@ -1,4 +1,5 @@
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { useState } from "react";
+import { DashboardHeader, type DashboardTab } from "@/components/dashboard/DashboardHeader";
 import { EconomySection } from "@/components/dashboard/sections/EconomySection";
 import { EnvironmentSection } from "@/components/dashboard/sections/EnvironmentSection";
 import { TourismSection } from "@/components/dashboard/sections/TourismSection";
@@ -9,10 +10,35 @@ import { SecuritySection } from "@/components/dashboard/sections/SecuritySection
 import { CultureAgriSection } from "@/components/dashboard/sections/CultureAgriSection";
 import { SocialIntelSection } from "@/components/dashboard/sections/SocialIntelSection";
 
+const sectionMap: Record<DashboardTab, React.ReactNode> = {
+  genel: null, // special: show all
+  ekonomi: <EconomySection />,
+  cevre: <EnvironmentSection />,
+  turizm: (
+    <>
+      <TourismSection />
+      <CultureAgriSection />
+    </>
+  ),
+  ulasim: <TransportSection />,
+  sosyal: (
+    <>
+      <SocialIntelSection />
+      <SocialSection />
+    </>
+  ),
+  guvenlik: <SecuritySection />,
+  enerji: <EnergySection />,
+};
+
 const Index = () => {
+  const [activeTab, setActiveTab] = useState<DashboardTab>("genel");
+
+  const isGenel = activeTab === "genel";
+
   return (
     <div className="min-h-screen bg-background scanline">
-      <DashboardHeader />
+      <DashboardHeader activeTab={activeTab} onTabChange={setActiveTab} />
       
       <main className="p-3 max-w-[1800px] mx-auto">
         {/* Top summary bar */}
@@ -34,26 +60,34 @@ const Index = () => {
           ))}
         </div>
 
-        {/* Main grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-3">
-          <div className="space-y-3">
-            <EconomySection />
+        {/* Filtered or full grid */}
+        {isGenel ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-3">
+            <div className="space-y-3">
+              <EconomySection />
+            </div>
+            <div className="space-y-3">
+              <EnvironmentSection />
+            </div>
+            <div className="space-y-3">
+              <TourismSection />
+              <CultureAgriSection />
+            </div>
+            <div className="space-y-3">
+              <SocialIntelSection />
+              <SocialSection />
+              <TransportSection />
+              <EnergySection />
+              <SecuritySection />
+            </div>
           </div>
-          <div className="space-y-3">
-            <EnvironmentSection />
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <div className="space-y-3">
+              {sectionMap[activeTab]}
+            </div>
           </div>
-          <div className="space-y-3">
-            <TourismSection />
-            <CultureAgriSection />
-          </div>
-          <div className="space-y-3">
-            <SocialIntelSection />
-            <SocialSection />
-            <TransportSection />
-            <EnergySection />
-            <SecuritySection />
-          </div>
-        </div>
+        )}
 
         {/* Footer */}
         <footer className="mt-4 py-3 border-t border-border/50 text-center">
