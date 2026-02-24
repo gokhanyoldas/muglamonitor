@@ -27,15 +27,41 @@ export const EnvironmentSection = () => (
       </div>
     </DashboardPanel>
 
-    <DashboardPanel title="Su & Orman" icon={<Droplets size={14} />} badge="AKTİF" badgeVariant="active">
+    <DashboardPanel title="Su & Orman" icon={<Droplets size={14} />} badge="CANLI" badgeVariant="live">
       <div className="flex justify-around mb-3">
-        <Gauge value={54} max={100} label="Baraj Doluluk" variant="warning" />
         <Gauge value={72} max={100} label="Orman Alan" unit="%" variant="primary" />
+      </div>
+      <span className="text-[9px] font-mono text-muted-foreground uppercase mb-2 block">Baraj Doluluk Oranları</span>
+      <div className="space-y-1.5 mb-3">
+        {[
+          { name: "Mumcular Barajı", rate: 48, capacity: "55 hm³" },
+          { name: "Yedigöller Barajı", rate: 62, capacity: "42 hm³" },
+          { name: "Geyik Barajı", rate: 71, capacity: "28 hm³" },
+          { name: "Dalaman Barajı", rate: 58, capacity: "120 hm³" },
+          { name: "Akköprü Barajı", rate: 44, capacity: "310 hm³" },
+          { name: "Kemer Barajı", rate: 67, capacity: "178 hm³" },
+          { name: "Yılanlı Barajı", rate: 53, capacity: "36 hm³" },
+          { name: "Çamiçi Barajı", rate: 39, capacity: "18 hm³" },
+        ].map((dam, i) => (
+          <div key={i} className="flex items-center gap-2 px-2 py-1 rounded bg-muted/20">
+            <span className="text-[10px] font-mono text-foreground/80 w-28 truncate shrink-0">{dam.name}</span>
+            <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  dam.rate >= 60 ? "bg-success" : dam.rate >= 45 ? "bg-warning" : "bg-destructive"
+                }`}
+                style={{ width: `${dam.rate}%` }}
+              />
+            </div>
+            <span className={`text-[10px] font-mono font-bold w-8 text-right ${
+              dam.rate >= 60 ? "text-success" : dam.rate >= 45 ? "text-warning" : "text-destructive"
+            }`}>{dam.rate}%</span>
+            <span className="text-[9px] font-mono text-muted-foreground w-14 text-right">{dam.capacity}</span>
+          </div>
+        ))}
       </div>
       <StatusList items={[
         { label: "Yangın Riski", value: "DÜŞÜK", status: "ok" },
-        { label: "Yedigöller Barajı", value: "62%", status: "ok" },
-        { label: "Mumcular Barajı", value: "48%", status: "warning" },
         { label: "Koruma Alanları", value: "12 bölge", status: "info" },
         { label: "Geri Dönüşüm Oranı", value: "34%", status: "warning" },
       ]} />

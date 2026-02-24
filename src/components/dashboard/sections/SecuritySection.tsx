@@ -119,7 +119,49 @@ export const SecuritySection = () => (
       </div>
     </DashboardPanel>
 
-    <DashboardPanel title="Acil Durum" icon={<AlertTriangle size={14} />} badge="NORMAL" badgeVariant="active">
+    <DashboardPanel title="Yol Çalışmaları & Kapanmalar" icon={<AlertTriangle size={14} />} badge="AKTİF" badgeVariant="warning">
+      <div className="space-y-2">
+        {[
+          { road: "Muğla-Bodrum D330 (Km 42-48)", status: "KAPALI", detail: "Asfalt yenileme — Tahmini bitiş: 15 Mar", type: "closed" as const },
+          { road: "Fethiye-Ölüdeniz Yolu", status: "TEK ŞERİT", detail: "Kanalizasyon çalışması — Kontrollü geçiş", type: "partial" as const },
+          { road: "Marmaris-Datça D400 (Km 12-15)", status: "TEK ŞERİT", detail: "Heyelan önleme çalışması — Gece 22:00-06:00 kapalı", type: "partial" as const },
+          { road: "Milas Çevreyolu Kavşak", status: "KAPALI", detail: "Kavşak düzenleme — Alternatif güzergah: D525", type: "closed" as const },
+          { road: "Ortaca-Dalyan Köprü", status: "NORMAL", detail: "Bakım tamamlandı — Trafiğe açıldı", type: "open" as const },
+          { road: "Yatağan-Muğla Arası (Km 8)", status: "TEK ŞERİT", detail: "Boru hattı döşeme — 08:00-18:00 arası kontrollü", type: "partial" as const },
+        ].map((item, i) => (
+          <div key={i} className="flex items-start gap-2 py-1.5 px-2 rounded bg-muted/20 hover:bg-muted/40 transition-colors">
+            <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+              item.type === "closed" ? "bg-destructive" : item.type === "partial" ? "bg-warning" : "bg-success"
+            }`} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-semibold text-foreground/90 truncate">{item.road}</span>
+                <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                  item.type === "closed" ? "bg-destructive/20 text-destructive" : item.type === "partial" ? "bg-warning/20 text-warning" : "bg-success/20 text-success"
+                }`}>{item.status}</span>
+              </div>
+              <span className="text-[10px] text-muted-foreground">{item.detail}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-center gap-4 mt-3">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-destructive" />
+          <span className="text-[10px] font-mono text-muted-foreground">Kapalı</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-warning" />
+          <span className="text-[10px] font-mono text-muted-foreground">Tek Şerit</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-success" />
+          <span className="text-[10px] font-mono text-muted-foreground">Açık</span>
+        </div>
+      </div>
+    </DashboardPanel>
+
+    <DashboardPanel title="Acil Durum" badge="NORMAL" badgeVariant="active">
       <StatusList items={[
         { label: "Deprem Riski", value: "ORTA", status: "warning" },
         { label: "Sel Riski", value: "DÜŞÜK", status: "ok" },
@@ -146,16 +188,29 @@ export const SecuritySection = () => (
     <DashboardPanel title="Haber Akışı" icon={<Newspaper size={14} />} badge="CANLI" badgeVariant="live">
       <div className="space-y-2">
         {[
-          { time: "14:32", text: "Bodrum'da yeni marina projesi onaylandı", type: "info" as const },
-          { time: "12:15", text: "Marmaris'te orman yangını riski düşük seviyede", type: "ok" as const },
-          { time: "10:45", text: "Fethiye belediyesi bisiklet yolu ihalesini açıkladı", type: "info" as const },
-          { time: "09:20", text: "Dalaman Havalimanı sezon hazırlıkları tamamlandı", type: "ok" as const },
-          { time: "08:00", text: "Muğla'da hava kalitesi 'İYİ' seviyesinde", type: "ok" as const },
+          { time: "14:32", text: "Bodrum'da yeni marina projesi onaylandı", type: "info" as const, reads: "12.4K", shares: 842, trend: 18 },
+          { time: "13:50", text: "Muğla'da sıcaklık mevsim normallerinin üstünde", type: "info" as const, reads: "8.7K", shares: 324, trend: 5 },
+          { time: "12:15", text: "Marmaris'te orman yangını riski düşük seviyede", type: "ok" as const, reads: "15.2K", shares: 1240, trend: 32 },
+          { time: "11:40", text: "Datça'da yeni arkeolojik keşif yapıldı", type: "info" as const, reads: "6.1K", shares: 512, trend: 24 },
+          { time: "10:45", text: "Fethiye belediyesi bisiklet yolu ihalesini açıkladı", type: "info" as const, reads: "4.8K", shares: 215, trend: -3 },
+          { time: "09:20", text: "Dalaman Havalimanı sezon hazırlıkları tamamlandı", type: "ok" as const, reads: "9.3K", shares: 678, trend: 12 },
+          { time: "08:00", text: "Muğla'da hava kalitesi 'İYİ' seviyesinde", type: "ok" as const, reads: "3.2K", shares: 145, trend: 0 },
         ].map((news, i) => (
           <div key={i} className="flex items-start gap-2 py-1.5 px-2 rounded bg-muted/20 hover:bg-muted/40 transition-colors">
             <span className="text-[10px] font-mono text-muted-foreground shrink-0 mt-0.5">{news.time}</span>
             <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${news.type === "ok" ? "bg-success" : "bg-accent"}`} />
-            <span className="text-xs text-foreground/80">{news.text}</span>
+            <div className="flex-1 min-w-0">
+              <span className="text-xs text-foreground/80 block">{news.text}</span>
+              <div className="flex items-center gap-3 mt-0.5">
+                <span className="text-[9px] font-mono text-muted-foreground">👁 {news.reads}</span>
+                <span className="text-[9px] font-mono text-muted-foreground">↗ {news.shares}</span>
+                {news.trend !== 0 && (
+                  <span className={`text-[9px] font-mono font-bold ${news.trend > 0 ? "text-success" : "text-destructive"}`}>
+                    {news.trend > 0 ? "▲" : "▼"} {Math.abs(news.trend)}%
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
         ))}
       </div>
