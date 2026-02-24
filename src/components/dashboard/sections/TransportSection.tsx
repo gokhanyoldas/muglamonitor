@@ -38,13 +38,53 @@ export const TransportSection = () => (
     </DashboardPanel>
 
     <DashboardPanel title="Altyapı Projeleri" badge="DEVAM" badgeVariant="warning">
-      <StatusList items={[
-        { label: "Muğla Çevreyolu", value: "78%", status: "ok" },
-        { label: "Bodrum Marina Genişleme", value: "45%", status: "warning" },
-        { label: "Fethiye Alt Geçit", value: "92%", status: "ok" },
-        { label: "Akıllı Kavşak Sistemi", value: "33%", status: "warning" },
-        { label: "Bisiklet Yolu Ağı", value: "15%", status: "critical" },
-      ]} />
+      <div className="space-y-2">
+        {[
+          { name: "Muğla Çevreyolu", progress: 78, start: "2024-03-15", end: "2026-06-30", address: "Muğla Merkez — Menteşe-Yatağan Bağlantısı" },
+          { name: "Bodrum Marina Genişleme", progress: 45, start: "2024-09-01", end: "2026-12-15", address: "Bodrum Merkez, İçmeler Mevkii" },
+          { name: "Fethiye Alt Geçit", progress: 92, start: "2024-01-10", end: "2025-04-30", address: "Fethiye Çarşı Kavşağı, D400 altı" },
+          { name: "Akıllı Kavşak Sistemi", progress: 33, start: "2025-01-01", end: "2026-09-01", address: "İl Geneli — 24 Kavşak Noktası" },
+          { name: "Bisiklet Yolu Ağı", progress: 15, start: "2025-02-15", end: "2027-06-01", address: "Bodrum-Turgutreis Sahil Şeridi" },
+        ].map((project, i) => {
+          const now = new Date();
+          const endDate = new Date(project.end);
+          const diffMs = endDate.getTime() - now.getTime();
+          const daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+
+          return (
+            <div key={i} className="px-2.5 py-2 rounded bg-muted/20 hover:bg-muted/40 transition-colors">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-mono font-semibold text-foreground/90">{project.name}</span>
+                <span className={`text-[10px] font-mono font-bold ${
+                  project.progress >= 80 ? "text-success" : project.progress >= 40 ? "text-warning" : "text-destructive"
+                }`}>{project.progress}%</span>
+              </div>
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-1.5">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    project.progress >= 80 ? "bg-success" : project.progress >= 40 ? "bg-warning" : "bg-destructive"
+                  }`}
+                  style={{ width: `${project.progress}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  <span className="text-[9px] text-muted-foreground">{project.address}</span>
+                </div>
+                <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                  daysLeft <= 90 ? "bg-success/20 text-success" : daysLeft <= 365 ? "bg-warning/20 text-warning" : "bg-accent/20 text-accent"
+                }`}>
+                  {daysLeft === 0 ? "TAMAMLANDI" : `${daysLeft} gün kaldı`}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-[8px] font-mono text-muted-foreground">Başlangıç: {project.start}</span>
+                <span className="text-[8px] font-mono text-muted-foreground">Bitiş: {project.end}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </DashboardPanel>
   </div>
 );
