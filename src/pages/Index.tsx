@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { DashboardHeader, type DashboardTab } from "@/components/dashboard/DashboardHeader";
 import { EconomySection } from "@/components/dashboard/sections/EconomySection";
 import { EnvironmentSection } from "@/components/dashboard/sections/EnvironmentSection";
@@ -9,15 +9,21 @@ import { EnergySection } from "@/components/dashboard/sections/EnergySection";
 import { SecuritySection } from "@/components/dashboard/sections/SecuritySection";
 import { CultureAgriSection } from "@/components/dashboard/sections/CultureAgriSection";
 import { SocialIntelSection } from "@/components/dashboard/sections/SocialIntelSection";
+import { GastronomySection } from "@/components/dashboard/sections/GastronomySection";
+import { TrafficDensityMap } from "@/components/dashboard/sections/TrafficDensityMap";
+import { ProtocolSection } from "@/components/dashboard/sections/ProtocolSection";
+import { TrendTopicsSection } from "@/components/dashboard/sections/TrendTopicsSection";
+import { LocalGovBudgetSection } from "@/components/dashboard/sections/LocalGovBudgetSection";
 
 const sectionComponents: Record<Exclude<DashboardTab, "genel">, React.FC[]> = {
   ekonomi: [EconomySection],
   cevre: [EnvironmentSection],
-  turizm: [TourismSection, CultureAgriSection],
-  ulasim: [TransportSection],
-  sosyal: [SocialIntelSection, SocialSection],
-  guvenlik: [SecuritySection],
+  turizm: [TourismSection, GastronomySection, CultureAgriSection],
+  ulasim: [TrafficDensityMap, TransportSection],
+  sosyal: [TrendTopicsSection, SocialIntelSection, SocialSection],
+  guvenlik: [SecuritySection, LocalGovBudgetSection],
   enerji: [EnergySection],
+  protokol: [ProtocolSection],
 };
 
 const Index = () => {
