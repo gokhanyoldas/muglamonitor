@@ -170,6 +170,15 @@
   50% { opacity: 0.3; }
 }
 
+@keyframes protocol-flash {
+  0%, 100% { background-color: hsl(var(--primary) / 0.1); border-color: hsl(var(--primary) / 0.3); }
+  50% { background-color: hsl(var(--primary) / 0.25); border-color: hsl(var(--primary) / 0.6); }
+}
+
+.animate-protocol-flash {
+  animation: protocol-flash 2s ease-in-out infinite;
+}
+
 @keyframes slide-in-data {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }

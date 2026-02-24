@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-export type DashboardTab = "genel" | "ekonomi" | "cevre" | "turizm" | "ulasim" | "sosyal" | "guvenlik" | "enerji";
+export type DashboardTab = "genel" | "ekonomi" | "cevre" | "turizm" | "ulasim" | "sosyal" | "guvenlik" | "enerji" | "protokol";
 
 interface DashboardHeaderProps {
   activeTab?: DashboardTab;
@@ -16,6 +16,7 @@ const tabs: { label: string; value: DashboardTab }[] = [
   { label: "Sosyal", value: "sosyal" },
   { label: "Güvenlik", value: "guvenlik" },
   { label: "Enerji", value: "enerji" },
+  { label: "Muğla Protokol", value: "protokol" },
 ];
 
 export const DashboardHeader = ({ activeTab = "genel", onTabChange }: DashboardHeaderProps) => {
