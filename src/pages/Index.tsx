@@ -5,6 +5,8 @@ import { EnvironmentSection } from "@/components/dashboard/sections/EnvironmentS
 import { TourismSection } from "@/components/dashboard/sections/TourismSection";
 import { SocialSection } from "@/components/dashboard/sections/SocialSection";
 import { TransportSection } from "@/components/dashboard/sections/TransportSection";
+import { FlightTrackerSection } from "@/components/dashboard/sections/FlightTrackerSection";
+import { BusScheduleSection } from "@/components/dashboard/sections/BusScheduleSection";
 import { EnergySection } from "@/components/dashboard/sections/EnergySection";
 import { SecuritySection } from "@/components/dashboard/sections/SecuritySection";
 import { CultureAgriSection } from "@/components/dashboard/sections/CultureAgriSection";
@@ -19,7 +21,7 @@ const sectionComponents: Record<Exclude<DashboardTab, "genel">, React.FC[]> = {
   ekonomi: [EconomySection],
   cevre: [EnvironmentSection],
   turizm: [TourismSection, GastronomySection, CultureAgriSection],
-  ulasim: [TrafficDensityMap, TransportSection],
+  ulasim: [TrafficDensityMap, FlightTrackerSection, BusScheduleSection, TransportSection],
   sosyal: [TrendTopicsSection, SocialIntelSection, SocialSection],
   guvenlik: [SecuritySection, LocalGovBudgetSection],
   enerji: [EnergySection],

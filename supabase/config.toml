@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.social-collect]
 verify_jwt = false
+
+[functions.transport-scrape]
+verify_jwt = false
