@@ -2,78 +2,104 @@ import { DashboardPanel } from "../DashboardPanel";
 import { StatCard } from "../StatCard";
 import { Gauge } from "../Gauge";
 import { StatusList } from "../StatusList";
-import { TreePine, Droplets, Wind } from "lucide-react";
+import { TreePine, Droplets, Wind, Loader2 } from "lucide-react";
+import { useLiveData } from "@/hooks/useLiveData";
 
-export const EnvironmentSection = () => (
-  <div className="space-y-3">
-    <DashboardPanel title="Hava & İklim" icon={<Wind size={14} />} badge="CANLI" badgeVariant="live">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-        <StatCard label="Sıcaklık" value="14" unit="°C" variant="primary" />
-        <StatCard label="Nem" value="68" unit="%" />
-        <StatCard label="Rüzgar" value="22" unit="km/h" />
-        <StatCard label="UV İndeksi" value="3" variant="accent" />
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <StatCard label="Deniz Suyu" value="16" unit="°C" variant="accent" />
-        <StatCard label="Dalga Yüksekliği" value="0.8" unit="m" />
-      </div>
-    </DashboardPanel>
+const defaultDams = [
+  { name: "Mumcular Barajı", rate: 48, capacity: "55 hm³" },
+  { name: "Yedigöller Barajı", rate: 62, capacity: "42 hm³" },
+  { name: "Geyik Barajı", rate: 71, capacity: "28 hm³" },
+  { name: "Dalaman Barajı", rate: 58, capacity: "120 hm³" },
+  { name: "Akköprü Barajı", rate: 44, capacity: "310 hm³" },
+  { name: "Kemer Barajı", rate: 67, capacity: "178 hm³" },
+  { name: "Yılanlı Barajı", rate: 53, capacity: "36 hm³" },
+  { name: "Çamiçi Barajı", rate: 39, capacity: "18 hm³" },
+];
 
-    <DashboardPanel title="Hava Kalitesi" badge="İYİ" badgeVariant="active">
-      <div className="flex justify-around">
-        <Gauge value={42} max={100} label="AQI" variant="primary" />
-        <Gauge value={15} max={50} label="PM2.5" variant="primary" />
-        <Gauge value={28} max={100} label="PM10" variant="primary" />
-      </div>
-    </DashboardPanel>
+const defaultWeather = { temperature: 14, humidity: 68, wind_speed: 22, uv_index: 3, sea_temp: 16 };
+const defaultAirQuality = { aqi: 42, pm25: 15, pm10: 28, quality_label: "İyi" };
 
-    <DashboardPanel title="Su & Orman" icon={<Droplets size={14} />} badge="CANLI" badgeVariant="live">
-      <div className="flex justify-around mb-3">
-        <Gauge value={72} max={100} label="Orman Alan" unit="%" variant="primary" />
-      </div>
-      <span className="text-[9px] font-mono text-muted-foreground uppercase mb-2 block">Baraj Doluluk Oranları</span>
-      <div className="space-y-1.5 mb-3">
-        {[
-          { name: "Mumcular Barajı", rate: 48, capacity: "55 hm³" },
-          { name: "Yedigöller Barajı", rate: 62, capacity: "42 hm³" },
-          { name: "Geyik Barajı", rate: 71, capacity: "28 hm³" },
-          { name: "Dalaman Barajı", rate: 58, capacity: "120 hm³" },
-          { name: "Akköprü Barajı", rate: 44, capacity: "310 hm³" },
-          { name: "Kemer Barajı", rate: 67, capacity: "178 hm³" },
-          { name: "Yılanlı Barajı", rate: 53, capacity: "36 hm³" },
-          { name: "Çamiçi Barajı", rate: 39, capacity: "18 hm³" },
-        ].map((dam, i) => (
-          <div key={i} className="flex items-center gap-2 px-2 py-1 rounded bg-muted/20">
-            <span className="text-[10px] font-mono text-foreground/80 w-28 truncate shrink-0">{dam.name}</span>
-            <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${
-                  dam.rate >= 60 ? "bg-success" : dam.rate >= 45 ? "bg-warning" : "bg-destructive"
-                }`}
-                style={{ width: `${dam.rate}%` }}
-              />
+export const EnvironmentSection = () => {
+  const { data: weatherData, isLoading: wLoading } = useLiveData<any>("weather", { refetchInterval: 15 * 60 * 1000 });
+  const { data: airData, isLoading: aLoading } = useLiveData<any>("air_quality", { refetchInterval: 30 * 60 * 1000 });
+  const { data: damData, isLoading: dLoading } = useLiveData<any>("dams", { refetchInterval: 60 * 60 * 1000 });
+
+  const w = weatherData || defaultWeather;
+  const aq = airData || defaultAirQuality;
+  const dams = (Array.isArray(damData) ? damData : damData?.dams || damData) || defaultDams;
+  const damList = Array.isArray(dams) && dams.length > 0
+    ? dams.map((d: any) => ({ name: d.name, rate: d.occupancy_rate ?? d.rate ?? 50, capacity: d.capacity ?? "" }))
+    : defaultDams;
+
+  const LiveBadge = ({ loading }: { loading: boolean }) =>
+    loading ? <Loader2 size={10} className="animate-spin text-muted-foreground inline ml-1" /> : null;
+
+  return (
+    <div className="space-y-3">
+      <DashboardPanel title="Hava & İklim" icon={<Wind size={14} />} badge="CANLI" badgeVariant="live">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+          <StatCard label="Sıcaklık" value={String(w.temperature)} unit="°C" variant="primary" />
+          <StatCard label="Nem" value={String(w.humidity)} unit="%" />
+          <StatCard label="Rüzgar" value={String(w.wind_speed)} unit="km/h" />
+          <StatCard label="UV İndeksi" value={String(w.uv_index)} variant="accent" />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <StatCard label="Deniz Suyu" value={String(w.sea_temp ?? 16)} unit="°C" variant="accent" />
+          <StatCard label="Dalga Yüksekliği" value="0.8" unit="m" />
+        </div>
+        <LiveBadge loading={wLoading} />
+      </DashboardPanel>
+
+      <DashboardPanel title="Hava Kalitesi" badge={aq.quality_label || "İYİ"} badgeVariant="active">
+        <div className="flex justify-around">
+          <Gauge value={aq.aqi} max={100} label="AQI" variant="primary" />
+          <Gauge value={aq.pm25} max={50} label="PM2.5" variant="primary" />
+          <Gauge value={aq.pm10} max={100} label="PM10" variant="primary" />
+        </div>
+        <LiveBadge loading={aLoading} />
+      </DashboardPanel>
+
+      <DashboardPanel title="Su & Orman" icon={<Droplets size={14} />} badge="CANLI" badgeVariant="live">
+        <div className="flex justify-around mb-3">
+          <Gauge value={72} max={100} label="Orman Alan" unit="%" variant="primary" />
+        </div>
+        <span className="text-[9px] font-mono text-muted-foreground uppercase mb-2 block">
+          Baraj Doluluk Oranları <LiveBadge loading={dLoading} />
+        </span>
+        <div className="space-y-1.5 mb-3">
+          {damList.map((dam: any, i: number) => (
+            <div key={i} className="flex items-center gap-2 px-2 py-1 rounded bg-muted/20">
+              <span className="text-[10px] font-mono text-foreground/80 w-28 truncate shrink-0">{dam.name}</span>
+              <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    dam.rate >= 60 ? "bg-success" : dam.rate >= 45 ? "bg-warning" : "bg-destructive"
+                  }`}
+                  style={{ width: `${dam.rate}%` }}
+                />
+              </div>
+              <span className={`text-[10px] font-mono font-bold w-8 text-right ${
+                dam.rate >= 60 ? "text-success" : dam.rate >= 45 ? "text-warning" : "text-destructive"
+              }`}>{dam.rate}%</span>
+              <span className="text-[9px] font-mono text-muted-foreground w-14 text-right">{dam.capacity}</span>
             </div>
-            <span className={`text-[10px] font-mono font-bold w-8 text-right ${
-              dam.rate >= 60 ? "text-success" : dam.rate >= 45 ? "text-warning" : "text-destructive"
-            }`}>{dam.rate}%</span>
-            <span className="text-[9px] font-mono text-muted-foreground w-14 text-right">{dam.capacity}</span>
-          </div>
-        ))}
-      </div>
-      <StatusList items={[
-        { label: "Yangın Riski", value: "DÜŞÜK", status: "ok" },
-        { label: "Koruma Alanları", value: "12 bölge", status: "info" },
-        { label: "Geri Dönüşüm Oranı", value: "34%", status: "warning" },
-      ]} />
-    </DashboardPanel>
+          ))}
+        </div>
+        <StatusList items={[
+          { label: "Yangın Riski", value: "DÜŞÜK", status: "ok" },
+          { label: "Koruma Alanları", value: "12 bölge", status: "info" },
+          { label: "Geri Dönüşüm Oranı", value: "34%", status: "warning" },
+        ]} />
+      </DashboardPanel>
 
-    <DashboardPanel title="Biyoçeşitlilik" icon={<TreePine size={14} />}>
-      <StatusList items={[
-        { label: "Endemik Türler", value: "156", status: "info" },
-        { label: "Koruma Altında", value: "43 tür", status: "ok" },
-        { label: "Caretta Caretta Yuvalama", value: "AKTİF", status: "ok" },
-        { label: "Mavi Bayraklı Plaj", value: "87", status: "ok" },
-      ]} />
-    </DashboardPanel>
-  </div>
-);
+      <DashboardPanel title="Biyoçeşitlilik" icon={<TreePine size={14} />}>
+        <StatusList items={[
+          { label: "Endemik Türler", value: "156", status: "info" },
+          { label: "Koruma Altında", value: "43 tür", status: "ok" },
+          { label: "Caretta Caretta Yuvalama", value: "AKTİF", status: "ok" },
+          { label: "Mavi Bayraklı Plaj", value: "87", status: "ok" },
+        ]} />
+      </DashboardPanel>
+    </div>
+  );
+};

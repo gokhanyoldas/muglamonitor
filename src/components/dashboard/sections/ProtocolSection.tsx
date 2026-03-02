@@ -1,6 +1,7 @@
 import { DashboardPanel } from "../DashboardPanel";
 import { StatusList } from "../StatusList";
-import { UserCheck, Crown } from "lucide-react";
+import { UserCheck, Crown, Loader2 } from "lucide-react";
+import { useLiveData } from "@/hooks/useLiveData";
 
 type ProtocolMember = {
   title: string;
@@ -9,7 +10,7 @@ type ProtocolMember = {
   changedDate?: string;
 };
 
-const protocolList: ProtocolMember[] = [
+const defaultProtocol: ProtocolMember[] = [
   { title: "Muğla Valisi", name: "İdris Akbıyık" },
   { title: "Garnizon Komutanı", name: "Tuğg. Mehmet Yılmaz" },
   { title: "Büyükşehir Belediye Başkanı", name: "Ahmet Aras" },
@@ -40,49 +41,63 @@ const isRecentChange = (changedDate?: string) => {
   return diffDays <= 7;
 };
 
-export const ProtocolSection = () => (
-  <div className="space-y-3">
-    <DashboardPanel title="Muğla İl Protokol Listesi" icon={<Crown size={14} />} badge="RESMİ" badgeVariant="info">
-      <div className="text-[9px] font-mono text-muted-foreground mb-2 flex items-center gap-2">
-        <span>Kaynak: Muğla Valiliği</span>
-        <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-        <span>Son güncelleme: {new Date().toLocaleDateString("tr-TR")}</span>
-      </div>
-      <div className="space-y-1">
-        {protocolList.map((member, i) => {
-          const isRecent = isRecentChange(member.changedDate);
-          return (
-            <div
-              key={i}
-              className={`flex items-center justify-between py-2 px-2.5 rounded transition-colors ${
-                isRecent
-                  ? "bg-primary/10 border border-primary/30 animate-protocol-flash"
-                  : "bg-muted/20 hover:bg-muted/40"
-              }`}
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <UserCheck size={12} className={isRecent ? "text-primary" : "text-muted-foreground"} />
-                <div className="min-w-0">
-                  <span className="text-[10px] font-mono text-muted-foreground block">{member.title}</span>
-                  <span className={`text-xs font-mono font-semibold block truncate ${
-                    isRecent ? "text-primary" : "text-foreground/90"
-                  }`}>{member.name}</span>
+export const ProtocolSection = () => {
+  const { data: liveProtocol, isLoading } = useLiveData<any>("protocol", { refetchInterval: 60 * 60 * 1000 });
+
+  const protocolList: ProtocolMember[] = Array.isArray(liveProtocol) && liveProtocol.length > 0
+    ? liveProtocol.map((p: any) => ({
+        title: p.title || "",
+        name: p.name || "",
+        isNew: p.isNew || false,
+        changedDate: p.changedDate,
+      }))
+    : defaultProtocol;
+
+  return (
+    <div className="space-y-3">
+      <DashboardPanel title="Muğla İl Protokol Listesi" icon={<Crown size={14} />} badge="RESMİ" badgeVariant="info">
+        <div className="text-[9px] font-mono text-muted-foreground mb-2 flex items-center gap-2">
+          <span>Kaynak: Muğla Valiliği</span>
+          <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+          <span>Son güncelleme: {new Date().toLocaleDateString("tr-TR")}</span>
+          {isLoading && <Loader2 size={10} className="animate-spin" />}
+        </div>
+        <div className="space-y-1">
+          {protocolList.map((member, i) => {
+            const isRecent = isRecentChange(member.changedDate);
+            return (
+              <div
+                key={i}
+                className={`flex items-center justify-between py-2 px-2.5 rounded transition-colors ${
+                  isRecent
+                    ? "bg-primary/10 border border-primary/30 animate-protocol-flash"
+                    : "bg-muted/20 hover:bg-muted/40"
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <UserCheck size={12} className={isRecent ? "text-primary" : "text-muted-foreground"} />
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-mono text-muted-foreground block">{member.title}</span>
+                    <span className={`text-xs font-mono font-semibold block truncate ${
+                      isRecent ? "text-primary" : "text-foreground/90"
+                    }`}>{member.name}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {isRecent && (
+                    <span className="text-[8px] font-mono font-bold bg-primary/20 text-primary px-1.5 py-0.5 rounded animate-pulse">
+                      YENİ ATAMA
+                    </span>
+                  )}
+                  {member.changedDate && (
+                    <span className="text-[8px] font-mono text-muted-foreground">{member.changedDate}</span>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                {isRecent && (
-                  <span className="text-[8px] font-mono font-bold bg-primary/20 text-primary px-1.5 py-0.5 rounded animate-pulse">
-                    YENİ ATAMA
-                  </span>
-                )}
-                {member.changedDate && (
-                  <span className="text-[8px] font-mono text-muted-foreground">{member.changedDate}</span>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </DashboardPanel>
-  </div>
-);
+            );
+          })}
+        </div>
+      </DashboardPanel>
+    </div>
+  );
+};
