@@ -34,7 +34,7 @@ const fallbackProtocol: ProtocolMember[] = [
 export const ProtocolSection = () => {
   const { data: liveProtocol, isLoading, isError } = useLiveData<any>("protocol", { refetchInterval: 60 * 60 * 1000 });
 
-  const protocolList: ProtocolMember[] = Array.isArray(liveProtocol) && liveProtocol.length > 5
+  const protocolList: ProtocolMember[] = Array.isArray(liveProtocol) && liveProtocol.length > 0
     ? liveProtocol.map((p: any) => ({
         title: p.title || "",
         name: p.name || "",
@@ -43,7 +43,7 @@ export const ProtocolSection = () => {
       }))
     : fallbackProtocol;
 
-  const isLive = Array.isArray(liveProtocol) && liveProtocol.length > 5;
+  const isLive = Array.isArray(liveProtocol) && liveProtocol.length > 0;
 
   return (
     <div className="space-y-3">
