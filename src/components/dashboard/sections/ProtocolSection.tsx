@@ -1,6 +1,5 @@
 import { DashboardPanel } from "../DashboardPanel";
-import { StatusList } from "../StatusList";
-import { UserCheck, Crown, Loader2 } from "lucide-react";
+import { UserCheck, Crown, Loader2, AlertTriangle } from "lucide-react";
 import { useLiveData } from "@/hooks/useLiveData";
 
 type ProtocolMember = {
@@ -10,92 +9,81 @@ type ProtocolMember = {
   changedDate?: string;
 };
 
-const defaultProtocol: ProtocolMember[] = [
-  { title: "Muğla Valisi", name: "İdris Akbıyık" },
-  { title: "Garnizon Komutanı", name: "Tuğg. Mehmet Yılmaz" },
-  { title: "Büyükşehir Belediye Başkanı", name: "Ahmet Aras" },
-  { title: "Cumhuriyet Başsavcısı", name: "Ali Rıza Demir" },
-  { title: "İl Emniyet Müdürü", name: "Süleyman Suvat Dilberoğlu" },
-  { title: "İl Jandarma Komutanı", name: "Alb. Hasan Kılıç" },
-  { title: "Rektör (MÜ)", name: "Prof. Dr. Hüseyin Çiçek" },
-  { title: "Bodrum Kaymakamı", name: "Bekir Yılmaz", isNew: true, changedDate: "2026-02-18" },
-  { title: "Fethiye Kaymakamı", name: "Yusuf Gültekin" },
-  { title: "Marmaris Kaymakamı", name: "Ertuğ Şevket Atasoy" },
-  { title: "Milas Kaymakamı", name: "Mustafa Ünver Böke" },
-  { title: "Dalaman Kaymakamı", name: "Fatih Çobanoğlu" },
-  { title: "Datça Kaymakamı", name: "Mesut Çoban" },
-  { title: "Köyceğiz Kaymakamı", name: "Erdem Çalışkan" },
-  { title: "Ortaca Kaymakamı", name: "Hakan Benli" },
-  { title: "Yatağan Kaymakamı", name: "Oğuz Alp Çağlar" },
-  { title: "Ula Kaymakamı", name: "Mehmet Fatih Kaya" },
-  { title: "Kavaklıdere Kaymakamı", name: "İsmail Hakkı Ertaş" },
-  { title: "Seydikemer Kaymakamı", name: "Ahmet Demirtaş", isNew: true, changedDate: "2026-02-20" },
-  { title: "Menteşe Kaymakamı", name: "Murat Polat" },
+const fallbackProtocol: ProtocolMember[] = [
+  { title: "Vali", name: "Dr. İdris AKBIYIK" },
+  { title: "Büyükşehir Belediye Başkanı", name: "Ahmet ARAS" },
+  { title: "Cumhuriyet Başsavcısı", name: "Oğuzhan DÖNMEZ" },
+  { title: "İl Emniyet Müdürü", name: "Süleyman KARADENİZ" },
+  { title: "İl Jandarma Komutanı", name: "Tuğgeneral Adem ŞEN" },
+  { title: "Muğla Sıtkı Koçman Üniversitesi Rektörü", name: "Prof. Dr. Turhan KAÇAR" },
+  { title: "Bodrum Kaymakamı", name: "Ali SIRMALI" },
+  { title: "Dalaman Kaymakamı", name: "Mesut YAKUTA" },
+  { title: "Datça Kaymakamı", name: "Murat ATICI" },
+  { title: "Fethiye Kaymakamı", name: "Fatih AKKAYA" },
+  { title: "Kavaklıdere Kaymakamı", name: "Ali ARGAMA" },
+  { title: "Köyceğiz Kaymakamı", name: "Mert KUMCU" },
+  { title: "Marmaris Kaymakamı", name: "Nurullah KAYA" },
+  { title: "Menteşe Kaymakamı", name: "Mehmet ERİŞ" },
+  { title: "Milas Kaymakamı", name: "Mustafa Ünver BÖKE" },
+  { title: "Ortaca Kaymakamı", name: "Kenan AKTAŞ" },
+  { title: "Seydikemer Kaymakamı", name: "Mustafa DİLEKLİ" },
+  { title: "Ula Kaymakamı", name: "Mehmet Rıdvan DOĞAN" },
+  { title: "Yatağan Kaymakamı", name: "Turgay İLHAN" },
 ];
 
-const isRecentChange = (changedDate?: string) => {
-  if (!changedDate) return false;
-  const changed = new Date(changedDate);
-  const now = new Date();
-  const diffDays = (now.getTime() - changed.getTime()) / (1000 * 60 * 60 * 24);
-  return diffDays <= 7;
-};
-
 export const ProtocolSection = () => {
-  const { data: liveProtocol, isLoading } = useLiveData<any>("protocol", { refetchInterval: 60 * 60 * 1000 });
+  const { data: liveProtocol, isLoading, isError } = useLiveData<any>("protocol", { refetchInterval: 60 * 60 * 1000 });
 
-  const protocolList: ProtocolMember[] = Array.isArray(liveProtocol) && liveProtocol.length > 0
+  const protocolList: ProtocolMember[] = Array.isArray(liveProtocol) && liveProtocol.length > 5
     ? liveProtocol.map((p: any) => ({
         title: p.title || "",
         name: p.name || "",
         isNew: p.isNew || false,
         changedDate: p.changedDate,
       }))
-    : defaultProtocol;
+    : fallbackProtocol;
+
+  const isLive = Array.isArray(liveProtocol) && liveProtocol.length > 5;
 
   return (
     <div className="space-y-3">
-      <DashboardPanel title="Muğla İl Protokol Listesi" icon={<Crown size={14} />} badge="RESMİ" badgeVariant="info">
+      <DashboardPanel title="Muğla İl Protokol Listesi" icon={<Crown size={14} />} badge={isLive ? "CANLI" : "VARSAYILAN"} badgeVariant={isLive ? "live" : "info"}>
         <div className="text-[9px] font-mono text-muted-foreground mb-2 flex items-center gap-2">
-          <span>Kaynak: Muğla Valiliği</span>
+          <span>Kaynak: mugla.gov.tr</span>
           <span className="w-1 h-1 rounded-full bg-muted-foreground" />
           <span>Son güncelleme: {new Date().toLocaleDateString("tr-TR")}</span>
           {isLoading && <Loader2 size={10} className="animate-spin" />}
+          {isError && <AlertTriangle size={10} className="text-destructive" />}
         </div>
         <div className="space-y-1">
-          {protocolList.map((member, i) => {
-            const isRecent = isRecentChange(member.changedDate);
-            return (
-              <div
-                key={i}
-                className={`flex items-center justify-between py-2 px-2.5 rounded transition-colors ${
-                  isRecent
-                    ? "bg-primary/10 border border-primary/30 animate-protocol-flash"
-                    : "bg-muted/20 hover:bg-muted/40"
-                }`}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <UserCheck size={12} className={isRecent ? "text-primary" : "text-muted-foreground"} />
-                  <div className="min-w-0">
-                    <span className="text-[10px] font-mono text-muted-foreground block">{member.title}</span>
-                    <span className={`text-xs font-mono font-semibold block truncate ${
-                      isRecent ? "text-primary" : "text-foreground/90"
-                    }`}>{member.name}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {isRecent && (
-                    <span className="text-[8px] font-mono font-bold bg-primary/20 text-primary px-1.5 py-0.5 rounded animate-pulse">
-                      YENİ ATAMA
-                    </span>
-                  )}
-                  {member.changedDate && (
-                    <span className="text-[8px] font-mono text-muted-foreground">{member.changedDate}</span>
-                  )}
+          {protocolList.map((member, i) => (
+            <div
+              key={i}
+              className={`flex items-center justify-between py-2 px-2.5 rounded transition-colors ${
+                member.isNew
+                  ? "bg-primary/10 border border-primary/30 animate-protocol-flash"
+                  : "bg-muted/20 hover:bg-muted/40"
+              }`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <UserCheck size={12} className={member.isNew ? "text-primary" : "text-muted-foreground"} />
+                <div className="min-w-0">
+                  <span className="text-[10px] font-mono text-muted-foreground block">{member.title}</span>
+                  <span className={`text-xs font-mono font-semibold block truncate ${
+                    member.isNew ? "text-primary" : "text-foreground/90"
+                  }`}>{member.name}</span>
                 </div>
               </div>
-            );
-          })}
+              {member.isNew && (
+                <span className="text-[8px] font-mono font-bold bg-primary/20 text-primary px-1.5 py-0.5 rounded animate-pulse shrink-0">
+                  YENİ ATAMA
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="text-[8px] font-mono text-muted-foreground mt-2 text-right">
+          {protocolList.length} kayıt • {isLive ? "Valilik web sitesinden canlı çekildi" : "Önbellek verisi"}
         </div>
       </DashboardPanel>
     </div>
