@@ -66,13 +66,7 @@ function stripHtml(h: string): string {
 
 function parseProtocolHtml(html: string): any[] {
   const members: any[] = [];
-  // Key positions we want to extract
-  const keyPositions = [
-    "vali", "kaymakam", "büyükşehir belediye başkanı", "belediye başkanı",
-    "cumhuriyet başsavcısı", "emniyet müdürü", "jandarma komutanı",
-    "rektör", "garnizon komutanı", "milletvekili", "vali yardımcısı",
-    "komutan", "amiral", "general", "tuğgeneral", "tümamiral", "tuğamiral", "koramiral",
-  ];
+  // Parse all rows without filtering
 
   // Parse table rows: <tr><td>...</td><td>TITLE</td><td>NAME</td><td>...</td></tr>
   const rowPattern = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
@@ -96,10 +90,7 @@ function parseProtocolHtml(html: string): any[] {
       // Skip table header row
       if (title === "ÜNVANI" || title === "NVANI") continue;
 
-      const titleLower = title.toLowerCase();
-      const isKeyPosition = keyPositions.some(k => titleLower.includes(k));
-
-      if (isKeyPosition && name.length > 2) {
+      if (name.length > 2) {
         members.push({ title, name, isNew: false });
       }
     }
