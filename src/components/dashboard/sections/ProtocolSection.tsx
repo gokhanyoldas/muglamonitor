@@ -1,6 +1,8 @@
+import { useEffect, useRef } from "react";
 import { DashboardPanel } from "../DashboardPanel";
 import { UserCheck, Crown, Loader2, AlertTriangle } from "lucide-react";
 import { useLiveData } from "@/hooks/useLiveData";
+import { toast } from "@/hooks/use-toast";
 
 type ProtocolMember = {
   title: string;
@@ -31,19 +33,60 @@ const fallbackProtocol: ProtocolMember[] = [
   { title: "Yatağan Kaymakamı", name: "Turgay İLHAN" },
 ];
 
+const STORAGE_KEY = "mugla-protocol-snapshot";
+
+function detectChanges(current: ProtocolMember[], previous: Record<string, string>): ProtocolMember[] {
+  return current.map((m) => {
+    const prevName = previous[m.title];
+    if (prevName && prevName !== m.name) {
+      return { ...m, isNew: true, changedDate: new Date().toISOString() };
+    }
+    return m;
+  });
+}
+
 export const ProtocolSection = () => {
   const { data: liveProtocol, isLoading, isError } = useLiveData<any>("protocol", { refetchInterval: 60 * 60 * 1000 });
+  const notifiedRef = useRef(false);
 
-  const protocolList: ProtocolMember[] = Array.isArray(liveProtocol) && liveProtocol.length > 0
+  const rawList: ProtocolMember[] = Array.isArray(liveProtocol) && liveProtocol.length > 0
     ? liveProtocol.map((p: any) => ({
         title: p.title || "",
         name: p.name || "",
-        isNew: p.isNew || false,
-        changedDate: p.changedDate,
       }))
     : fallbackProtocol;
 
   const isLive = Array.isArray(liveProtocol) && liveProtocol.length > 0;
+
+  // Compare with stored snapshot and detect changes
+  let protocolList = rawList;
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored && isLive) {
+      const previous: Record<string, string> = JSON.parse(stored);
+      protocolList = detectChanges(rawList, previous);
+    }
+  } catch { /* ignore parse errors */ }
+
+  // Store current snapshot & notify on changes
+  useEffect(() => {
+    if (!isLive || notifiedRef.current) return;
+
+    const changes = protocolList.filter((m) => m.isNew);
+    if (changes.length > 0) {
+      notifiedRef.current = true;
+      toast({
+        title: `🔔 Protokol Değişikliği (${changes.length})`,
+        description: changes.map((c) => `${c.title}: ${c.name}`).join(" • "),
+        variant: "default",
+      });
+    }
+
+    // Save current snapshot
+    const snapshot: Record<string, string> = {};
+    rawList.forEach((m) => { snapshot[m.title] = m.name; });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+  }, [isLive, protocolList, rawList]);
 
   return (
     <div className="space-y-3">
