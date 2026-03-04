@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type DataType =
   | "weather" | "air_quality" | "dams" | "protocol" | "news"
-  | "economy" | "real_estate" | "tourism" | "road_works" | "energy" | "all";
+  | "economy" | "real_estate" | "tourism" | "road_works" | "energy" | "trends" | "all";
 
 export function useLiveData<T = any>(type: DataType, options?: {
   refetchInterval?: number;
