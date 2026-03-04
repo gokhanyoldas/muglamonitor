@@ -84,6 +84,8 @@ const SocialIntel = () => {
   const [collectedItems, setCollectedItems] = useState<CollectedItem[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [hasUnsavedKeywords, setHasUnsavedKeywords] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [nextRefreshIn, setNextRefreshIn] = useState(0);
   const { toast } = useToast();
 
   const saveKeywords = () => {
@@ -160,11 +162,37 @@ const SocialIntel = () => {
     }
   }, [keywords, selectedPlatform, collectData, toast]);
 
+  const AUTO_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
   // Auto-run on first load
   useEffect(() => {
     runFullAnalysis();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-refresh timer
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const interval = setInterval(() => {
+      if (!isCollecting && !isAnalyzing) {
+        runFullAnalysis();
+      }
+    }, AUTO_REFRESH_INTERVAL);
+    return () => clearInterval(interval);
+  }, [autoRefresh, runFullAnalysis, isCollecting, isAnalyzing]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (!autoRefresh || !lastUpdated) return;
+    const tick = setInterval(() => {
+      const elapsed = Date.now() - new Date().setHours(
+        ...lastUpdated.split(":").map(Number) as [number, number, number]
+      );
+      const remaining = Math.max(0, Math.ceil((AUTO_REFRESH_INTERVAL - elapsed) / 1000));
+      setNextRefreshIn(remaining);
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [autoRefresh, lastUpdated]);
 
   const filteredAnalyses = selectedPlatform === "all"
     ? analyses
@@ -193,11 +221,28 @@ const SocialIntel = () => {
               <span className="text-muted-foreground ml-2">İSTİHBARAT MERKEZİ</span>
             </h2>
           </div>
-          {lastUpdated && (
-            <span className="text-[10px] font-mono text-muted-foreground">
-              Son güncelleme: {lastUpdated}
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {lastUpdated && (
+              <span className="text-[10px] font-mono text-muted-foreground">
+                Son: {lastUpdated}
+              </span>
+            )}
+            {autoRefresh && nextRefreshIn > 0 && !isLoading && (
+              <span className="text-[10px] font-mono text-accent">
+                ⟳ {Math.floor(nextRefreshIn / 60)}:{String(nextRefreshIn % 60).padStart(2, "0")}
+              </span>
+            )}
+            <button
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              className={`text-[10px] font-mono px-2 py-0.5 rounded border transition-colors ${
+                autoRefresh
+                  ? "bg-success/20 text-success border-success/30"
+                  : "bg-muted/20 text-muted-foreground border-border/50"
+              }`}
+            >
+              {autoRefresh ? "OTO-GÜNCELLEME AÇIK" : "OTO-GÜNCELLEME KAPALI"}
+            </button>
+          </div>
         </div>
 
         {/* Stats bar */}
