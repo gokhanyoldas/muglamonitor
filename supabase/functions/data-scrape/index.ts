@@ -117,22 +117,42 @@ async function scrapeNews(apiKey: string, keywords?: string[]) {
   const kwList = keywords && keywords.length > 0 ? keywords : ["Muğla"];
   const query = kwList.slice(0, 6).join(" ") + " haberleri güncel";
 
-  // 1) RSS feeds filtered by keywords
+  // 1) RSS feeds — Ulusal + Yerel basın
   const RSS_SOURCES = [
-    { url: "https://www.trthaber.com/xml/rss.xml", name: "TRT Haber" },
-    { url: "https://www.ntv.com.tr/son-dakika.rss", name: "NTV" },
-    { url: "https://www.hurriyet.com.tr/rss/gundem", name: "Hürriyet" },
+    // === ULUSAL BASIN ===
+    { url: "https://www.trthaber.com/xml/rss.xml", name: "TRT Haber", category: "ulusal" },
+    { url: "https://www.ntv.com.tr/son-dakika.rss", name: "NTV", category: "ulusal" },
+    { url: "https://www.hurriyet.com.tr/rss/gundem", name: "Hürriyet", category: "ulusal" },
+    { url: "https://www.sabah.com.tr/rss/gundem.xml", name: "Sabah", category: "ulusal" },
+    { url: "https://www.milliyet.com.tr/rss/rssnew/gundemrss.xml", name: "Milliyet", category: "ulusal" },
+    { url: "https://www.haberturk.com/rss/gundem.xml", name: "Habertürk", category: "ulusal" },
+    { url: "https://t24.com.tr/rss", name: "T24", category: "ulusal" },
+    { url: "https://www.cumhuriyet.com.tr/rss/son_dakika.xml", name: "Cumhuriyet", category: "ulusal" },
+    { url: "https://www.sozcu.com.tr/rss/gundem.xml", name: "Sözcü", category: "ulusal" },
+    { url: "https://www.aa.com.tr/tr/rss/default?cat=guncel", name: "Anadolu Ajansı", category: "ulusal" },
+    { url: "https://www.dha.com.tr/rss/", name: "DHA", category: "ulusal" },
+    { url: "https://www.iha.com.tr/rss/", name: "İHA", category: "ulusal" },
+    // === YEREL BASIN (Muğla & Ege) ===
+    { url: "https://www.muglagazetesi.com.tr/rss.xml", name: "Muğla Gazetesi", category: "yerel" },
+    { url: "https://www.bodrumgundem.com/feed/", name: "Bodrum Gündem", category: "yerel" },
+    { url: "https://www.48haber.com/rss.xml", name: "48 Haber", category: "yerel" },
+    { url: "https://www.marmarisgundem.com/feed/", name: "Marmaris Gündem", category: "yerel" },
+    { url: "https://www.fethiyegazete.com/feed/", name: "Fethiye Gazete", category: "yerel" },
+    { url: "https://www.muglahaberler.com/rss.xml", name: "Muğla Haberler", category: "yerel" },
+    { url: "https://www.egehaber.com/rss/", name: "Ege Haber", category: "yerel" },
+    { url: "https://www.datcahaber.com/feed/", name: "Datça Haber", category: "yerel" },
   ];
 
-  const rssResults: any[] = [];
-  for (const source of RSS_SOURCES) {
+  // Fetch all RSS in parallel
+  const rssPromises = RSS_SOURCES.map(async (source) => {
     try {
       const res = await fetch(source.url, {
         headers: { "User-Agent": "MuglaMonitor/1.0" },
         signal: AbortSignal.timeout(8000),
       });
-      if (!res.ok) continue;
+      if (!res.ok) return [];
       const xml = await res.text();
+      const items: any[] = [];
       const itemRegex = /<item>([\s\S]*?)<\/item>/g;
       let match;
       while ((match = itemRegex.exec(xml)) !== null) {
@@ -146,14 +166,19 @@ async function scrapeNews(apiKey: string, keywords?: string[]) {
         const fullText = `${title} ${description}`.toLowerCase();
         const matched = kwList.filter(kw => fullText.includes(kw.toLowerCase()));
         if (matched.length > 0) {
-          rssResults.push({
+          items.push({
             title, url: link, description: description.replace(/<[^>]*>/g, "").slice(0, 300),
-            source: source.name, snippet: "", published_at: pubDate, matched_keywords: matched,
+            source: source.name, category: source.category, snippet: "",
+            published_at: pubDate, matched_keywords: matched,
           });
         }
       }
-    } catch (e) { console.error(`RSS error ${source.name}:`, e); }
-  }
+      return items.slice(0, 10);
+    } catch (e) { console.error(`RSS error ${source.name}:`, e); return []; }
+  });
+
+  const rssArrays = await Promise.all(rssPromises);
+  const rssResults = rssArrays.flat();
 
   // 2) Firecrawl web search (if available)
   let webResults: any[] = [];
