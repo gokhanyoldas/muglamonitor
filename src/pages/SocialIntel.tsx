@@ -318,7 +318,7 @@ const SocialIntel = () => {
                 {isCollecting ? "VERİ TOPLANIYOR..." : isAnalyzing ? "AI ANALİZ EDİYOR..." : "CANLI ANALİZ BAŞLAT"}
               </button>
               <div className="mt-2 text-[10px] font-mono text-muted-foreground space-y-0.5">
-                <div className="flex items-center gap-1"><Newspaper size={10} /> RSS haber kaynakları (TRT, NTV, Hürriyet)</div>
+                <div className="flex items-center gap-1"><Newspaper size={10} /> 20+ RSS kaynağı (ulusal + yerel basın)</div>
                 <div className="flex items-center gap-1"><Search size={10} /> Firecrawl web scraping</div>
                 <div className="flex items-center gap-1"><Sparkles size={10} /> AI duygu analizi & içgörü</div>
               </div>
@@ -363,7 +363,7 @@ const SocialIntel = () => {
             {collectedItems.length > 0 && (
               <DashboardPanel title="Toplanan Gerçek Veriler" icon={<Newspaper size={14} />} badge="CANLI" badgeVariant="live" count={collectedItems.length}>
                 <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
-                  {collectedItems.slice(0, 15).map((item, i) => (
+                  {collectedItems.slice(0, 20).map((item, i) => (
                     <div key={i} className="p-2 rounded bg-muted/20 border border-border/30">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: platformColors[item.platform] }} />
@@ -371,6 +371,18 @@ const SocialIntel = () => {
                         <span className="text-[10px] font-mono text-muted-foreground">• {item.source_author}</span>
                       </div>
                       <p className="text-[11px] text-foreground/80 leading-snug">{item.content}</p>
+                      {item.description && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{item.description}</p>
+                      )}
+                      {item.matched_keywords && item.matched_keywords.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {item.matched_keywords.map((kw, ki) => (
+                            <span key={ki} className="text-[9px] font-mono bg-primary/10 text-primary border border-primary/20 rounded px-1 py-0.5">
+                              {kw}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       {item.source_url && (
                         <a href={item.source_url} target="_blank" rel="noopener noreferrer" className="text-[9px] font-mono text-primary/60 hover:text-primary mt-1 block truncate">
                           {item.source_url}
