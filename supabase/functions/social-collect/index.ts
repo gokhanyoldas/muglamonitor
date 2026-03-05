@@ -5,11 +5,30 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Turkish news RSS feeds for Muğla region
+// Turkish news RSS feeds — Ulusal + Yerel basın
 const RSS_SOURCES = [
+  // Ulusal
   { url: "https://www.trthaber.com/xml/rss.xml", name: "TRT Haber" },
   { url: "https://www.ntv.com.tr/son-dakika.rss", name: "NTV" },
   { url: "https://www.hurriyet.com.tr/rss/gundem", name: "Hürriyet" },
+  { url: "https://www.sabah.com.tr/rss/gundem.xml", name: "Sabah" },
+  { url: "https://www.milliyet.com.tr/rss/rssnew/gundemrss.xml", name: "Milliyet" },
+  { url: "https://www.haberturk.com/rss/gundem.xml", name: "Habertürk" },
+  { url: "https://t24.com.tr/rss", name: "T24" },
+  { url: "https://www.cumhuriyet.com.tr/rss/son_dakika.xml", name: "Cumhuriyet" },
+  { url: "https://www.sozcu.com.tr/rss/gundem.xml", name: "Sözcü" },
+  { url: "https://www.aa.com.tr/tr/rss/default?cat=guncel", name: "Anadolu Ajansı" },
+  { url: "https://www.dha.com.tr/rss/", name: "DHA" },
+  { url: "https://www.iha.com.tr/rss/", name: "İHA" },
+  // Yerel (Muğla & Ege)
+  { url: "https://www.muglagazetesi.com.tr/rss.xml", name: "Muğla Gazetesi" },
+  { url: "https://www.bodrumgundem.com/feed/", name: "Bodrum Gündem" },
+  { url: "https://www.48haber.com/rss.xml", name: "48 Haber" },
+  { url: "https://www.marmarisgundem.com/feed/", name: "Marmaris Gündem" },
+  { url: "https://www.fethiyegazete.com/feed/", name: "Fethiye Gazete" },
+  { url: "https://www.muglahaberler.com/rss.xml", name: "Muğla Haberler" },
+  { url: "https://www.egehaber.com/rss/", name: "Ege Haber" },
+  { url: "https://www.datcahaber.com/feed/", name: "Datça Haber" },
 ];
 
 async function fetchRSS(source: { url: string; name: string }, keywords: string[]): Promise<any[]> {
