@@ -8,12 +8,13 @@ export type DataType =
 export function useLiveData<T = any>(type: DataType, options?: {
   refetchInterval?: number;
   enabled?: boolean;
+  extraBody?: Record<string, any>;
 }) {
   return useQuery<T | null>({
-    queryKey: ["live-data", type],
+    queryKey: ["live-data", type, options?.extraBody],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("data-scrape", {
-        body: { type },
+        body: { type, ...options?.extraBody },
       });
       if (error) {
         console.error(`Live data error (${type}):`, error);
