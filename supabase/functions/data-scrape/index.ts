@@ -113,13 +113,72 @@ async function scrapeDamLevels(apiKey: string) {
   return firecrawlScrape(apiKey, "https://www.dsi.gov.tr/AnaSayfa/Detay/Baraj_Doluluk_Oranlari",
     `Extract dam levels for Muğla: { name, occupancy_rate, capacity, current_volume, date }. Focus on: Mumcular, Yedigöller, Geyik, Dalaman barajları.`);
 }
-async function scrapeNews(apiKey: string) {
-  const results = await firecrawlSearch(apiKey, "Muğla haberleri güncel son dakika", 15);
-  return results.map((r: any) => ({
-    title: r.title || "", url: r.url || "", description: r.description || "",
-    source: new URL(r.url || "https://example.com").hostname.replace("www.", ""),
-    snippet: r.markdown?.substring(0, 200) || "",
-  })).filter((n: any) => n.title);
+async function scrapeNews(apiKey: string, keywords?: string[]) {
+  const kwList = keywords && keywords.length > 0 ? keywords : ["Muğla"];
+  const query = kwList.slice(0, 6).join(" ") + " haberleri güncel";
+
+  // 1) RSS feeds filtered by keywords
+  const RSS_SOURCES = [
+    { url: "https://www.trthaber.com/xml/rss.xml", name: "TRT Haber" },
+    { url: "https://www.ntv.com.tr/son-dakika.rss", name: "NTV" },
+    { url: "https://www.hurriyet.com.tr/rss/gundem", name: "Hürriyet" },
+  ];
+
+  const rssResults: any[] = [];
+  for (const source of RSS_SOURCES) {
+    try {
+      const res = await fetch(source.url, {
+        headers: { "User-Agent": "MuglaMonitor/1.0" },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) continue;
+      const xml = await res.text();
+      const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+      let match;
+      while ((match = itemRegex.exec(xml)) !== null) {
+        const itemXml = match[1];
+        const title = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]>|<title>(.*?)<\/title>/)?.[1] ||
+                      itemXml.match(/<title>(.*?)<\/title>/)?.[1] || "";
+        const description = itemXml.match(/<description><!\[CDATA\[(.*?)\]\]>|<description>(.*?)<\/description>/)?.[1] || "";
+        const link = itemXml.match(/<link>(.*?)<\/link>/)?.[1] || "";
+        const pubDate = itemXml.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || "";
+
+        const fullText = `${title} ${description}`.toLowerCase();
+        const matched = kwList.filter(kw => fullText.includes(kw.toLowerCase()));
+        if (matched.length > 0) {
+          rssResults.push({
+            title, url: link, description: description.replace(/<[^>]*>/g, "").slice(0, 300),
+            source: source.name, snippet: "", published_at: pubDate, matched_keywords: matched,
+          });
+        }
+      }
+    } catch (e) { console.error(`RSS error ${source.name}:`, e); }
+  }
+
+  // 2) Firecrawl web search (if available)
+  let webResults: any[] = [];
+  if (apiKey) {
+    const results = await firecrawlSearch(apiKey, query, 15);
+    webResults = results.map((r: any) => ({
+      title: r.title || "", url: r.url || "", description: r.description || "",
+      source: new URL(r.url || "https://example.com").hostname.replace("www.", ""),
+      snippet: r.markdown?.substring(0, 200) || "",
+      matched_keywords: kwList.filter(kw => `${r.title} ${r.description}`.toLowerCase().includes(kw.toLowerCase())),
+    })).filter((n: any) => n.title);
+  }
+
+  // Merge & deduplicate
+  const allNews = [...rssResults, ...webResults];
+  const seen = new Set<string>();
+  const unique = allNews.filter(n => {
+    const key = n.title.toLowerCase().slice(0, 50);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  console.log(`Scraped ${unique.length} news items (RSS: ${rssResults.length}, Web: ${webResults.length}) for keywords: ${kwList.join(", ")}`);
+  return unique.slice(0, 20);
 }
 async function scrapeEconomy(apiKey: string) {
   return firecrawlScrape(apiKey, "https://www.tuik.gov.tr/",
@@ -196,7 +255,7 @@ async function scrapeEnergy(apiKey: string) {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
-    const { type } = await req.json();
+    const { type, keywords } = await req.json();
     const apiKey = Deno.env.get("FIRECRAWL_API_KEY") || "";
 
     let result: any = null;
@@ -205,7 +264,7 @@ serve(async (req) => {
       case "air_quality": result = await scrapeAirQuality(apiKey); break;
       case "dams": result = await scrapeDamLevels(apiKey); break;
       case "protocol": result = await scrapeProtocol(apiKey); break;
-      case "news": result = await scrapeNews(apiKey); break;
+      case "news": result = await scrapeNews(apiKey, keywords); break;
       case "economy": result = await scrapeEconomy(apiKey); break;
       case "real_estate": result = await scrapeRealEstate(apiKey); break;
       case "tourism": result = await scrapeTourism(apiKey); break;

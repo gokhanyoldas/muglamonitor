@@ -4,6 +4,7 @@ import { StatusList } from "../StatusList";
 import { Gauge } from "../Gauge";
 import { Shield, AlertTriangle, Landmark, Newspaper, MapPin, Loader2 } from "lucide-react";
 import { useLiveData } from "@/hooks/useLiveData";
+import { useState, useEffect } from "react";
 
 const radarPoints = [
   { name: "Bodrum - Milas Arası", lat: 37.28, lng: 27.67, type: "radar" },
@@ -93,7 +94,26 @@ const defaultNews = [
 ];
 
 export const SecuritySection = () => {
-  const { data: liveNews, isLoading: newsLoading } = useLiveData<any[]>("news", { refetchInterval: 5 * 60 * 1000 });
+  const [keywords, setKeywords] = useState<string[]>(() => {
+    const saved = localStorage.getItem("social-intel-keywords");
+    return saved ? JSON.parse(saved) : ["Muğla", "Bodrum", "Fethiye", "Marmaris"];
+  });
+
+  // Listen for keyword changes from SocialIntel page
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "social-intel-keywords" && e.newValue) {
+        setKeywords(JSON.parse(e.newValue));
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  const { data: liveNews, isLoading: newsLoading } = useLiveData<any[]>("news", {
+    refetchInterval: 5 * 60 * 1000,
+    extraBody: { keywords },
+  });
   const { data: liveRoadWorks, isLoading: rwLoading } = useLiveData<any[]>("road_works", { refetchInterval: 15 * 60 * 1000 });
 
   const newsItems = liveNews && liveNews.length > 0
