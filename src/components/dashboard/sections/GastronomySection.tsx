@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { DashboardPanel } from "../DashboardPanel";
 import { StatCard } from "../StatCard";
-import { UtensilsCrossed, Star, ChevronDown, ChevronUp, MapPin } from "lucide-react";
+import { UtensilsCrossed, Star, ChevronDown, ChevronUp, MapPin, Loader2 } from "lucide-react";
+import { useLiveData } from "@/hooks/useLiveData";
 
 type Restaurant = {
   name: string;
@@ -17,7 +18,7 @@ type District = {
   restaurants: Restaurant[];
 };
 
-const districts: District[] = [
+const fallbackDistricts: District[] = [
   {
     name: "Bodrum",
     restaurants: [
@@ -106,6 +107,10 @@ const StarRating = ({ rating }: { rating: number }) => {
 
 export const GastronomySection = () => {
   const [openDistrict, setOpenDistrict] = useState<string | null>("Bodrum");
+  const { data: gastroData, isLoading } = useLiveData<any>("gastronomy", { refetchInterval: 24 * 60 * 60 * 1000 });
+
+  const districts: District[] = gastroData?.districts || fallbackDistricts;
+  const isLive = !!gastroData?.districts;
 
   const totalRestaurants = districts.reduce((a, d) => a + d.restaurants.length, 0);
   const michelinCount = districts.reduce((a, d) => a + d.restaurants.filter(r => r.michelin).length, 0);
@@ -113,12 +118,14 @@ export const GastronomySection = () => {
 
   return (
     <div className="space-y-3">
-      <DashboardPanel title="Gastronomi" icon={<UtensilsCrossed size={14} />} badge="MUĞLA" badgeVariant="info">
+      <DashboardPanel title="Gastronomi" icon={<UtensilsCrossed size={14} />} badge={isLive ? "CANLI" : "CANLI"} badgeVariant="live">
+        {isLoading && <Loader2 size={10} className="animate-spin text-muted-foreground mb-1" />}
         <div className="grid grid-cols-3 gap-2 mb-3">
           <StatCard label="Toplam Restoran" value={String(totalRestaurants)} variant="primary" />
           <StatCard label="Michelin" value={String(michelinCount)} variant="accent" />
           <StatCard label="Ort. Puan" value={avgRating} variant="warning" />
         </div>
+        {gastroData?.source && <div className="text-[8px] font-mono text-muted-foreground text-right">Kaynak: {gastroData.source}</div>}
       </DashboardPanel>
 
       <DashboardPanel title="Michelin Yıldızlı & Öne Çıkanlar" icon={<Star size={14} />} badge={`${michelinCount} RESTORAN`} badgeVariant="active">

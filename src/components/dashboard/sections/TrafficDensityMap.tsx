@@ -1,17 +1,18 @@
 import { useState } from "react";
 import { DashboardPanel } from "../DashboardPanel";
 import { StatCard } from "../StatCard";
-import { Map } from "lucide-react";
+import { Map, Loader2 } from "lucide-react";
+import { useLiveData } from "@/hooks/useLiveData";
 
 type DistrictZone = {
   name: string;
   lat: number;
   lng: number;
-  density: number; // 0-100
+  density: number;
   vehicles: string;
 };
 
-const districtZones: DistrictZone[] = [
+const fallbackZones: DistrictZone[] = [
   { name: "Bodrum", lat: 37.04, lng: 27.43, density: 78, vehicles: "48K" },
   { name: "Fethiye", lat: 36.65, lng: 29.12, density: 62, vehicles: "32K" },
   { name: "Marmaris", lat: 36.85, lng: 28.27, density: 71, vehicles: "38K" },
@@ -23,7 +24,7 @@ const districtZones: DistrictZone[] = [
   { name: "Köyceğiz", lat: 36.97, lng: 28.68, density: 22, vehicles: "6K" },
   { name: "Yatağan", lat: 37.34, lng: 28.13, density: 35, vehicles: "12K" },
   { name: "Ula", lat: 37.10, lng: 28.41, density: 30, vehicles: "10K" },
-  { name: "Kavaklidere", lat: 37.44, lng: 28.38, density: 15, vehicles: "4K" },
+  { name: "Kavaklıdere", lat: 37.44, lng: 28.38, density: 15, vehicles: "4K" },
   { name: "Seydikemer", lat: 36.65, lng: 29.35, density: 28, vehicles: "9K" },
 ];
 
@@ -40,6 +41,10 @@ const getDensityOpacity = (density: number) => {
 
 export const TrafficDensityMap = () => {
   const [hoveredZone, setHoveredZone] = useState<string | null>(null);
+  const { data: trafficData, isLoading } = useLiveData<any>("traffic_density", { refetchInterval: 5 * 60 * 1000 });
+
+  const districtZones: DistrictZone[] = trafficData?.zones || fallbackZones;
+  const isLive = !!trafficData?.zones;
 
   const mapWidth = 420;
   const mapHeight = 300;
@@ -54,6 +59,7 @@ export const TrafficDensityMap = () => {
 
   return (
     <DashboardPanel title="Trafik Yoğunluk Haritası" icon={<Map size={14} />} badge="CANLI" badgeVariant="live">
+      {isLoading && <Loader2 size={10} className="animate-spin text-muted-foreground mb-1" />}
       <div className="grid grid-cols-3 gap-2 mb-3">
         <StatCard label="Ort. Yoğunluk" value={`${avgDensity}`} unit="%" variant="primary" />
         <StatCard label="Günlük Araç" value={totalVehicles} />
@@ -63,8 +69,6 @@ export const TrafficDensityMap = () => {
       <div className="relative w-full">
         <svg viewBox={`0 0 ${mapWidth} ${mapHeight}`} className="w-full h-auto" style={{ minHeight: 220 }}>
           <rect width={mapWidth} height={mapHeight} fill="hsl(var(--background))" rx="4" />
-
-          {/* Region outline */}
           <path
             d={`M ${toX(27.4)} ${toY(37.4)} 
                 L ${toX(28.0)} ${toY(37.5)} 
@@ -82,15 +86,12 @@ export const TrafficDensityMap = () => {
             stroke="hsl(var(--border))"
             strokeWidth="0.8"
           />
-
-          {/* Heat zones */}
           {districtZones.map((zone, i) => (
             <g key={i}
               onMouseEnter={() => setHoveredZone(zone.name)}
               onMouseLeave={() => setHoveredZone(null)}
               className="cursor-pointer"
             >
-              {/* Heat radius */}
               <circle
                 cx={toX(zone.lng)}
                 cy={toY(zone.lat)}
@@ -99,7 +100,6 @@ export const TrafficDensityMap = () => {
                 opacity={getDensityOpacity(zone.density)}
                 className={zone.density >= 70 ? "animate-pulse" : ""}
               />
-              {/* Core dot */}
               <circle
                 cx={toX(zone.lng)}
                 cy={toY(zone.lat)}
@@ -108,7 +108,6 @@ export const TrafficDensityMap = () => {
                 stroke="hsl(var(--background))"
                 strokeWidth="1"
               />
-              {/* Label */}
               <text
                 x={toX(zone.lng)}
                 y={toY(zone.lat) - 10 - (zone.density / 100) * 8}
@@ -120,7 +119,6 @@ export const TrafficDensityMap = () => {
               >
                 {zone.name}
               </text>
-              {/* Density % */}
               <text
                 x={toX(zone.lng)}
                 y={toY(zone.lat) + 3}
@@ -136,7 +134,6 @@ export const TrafficDensityMap = () => {
           ))}
         </svg>
 
-        {/* Hovered tooltip */}
         {hoveredZone && (() => {
           const zone = districtZones.find(z => z.name === hoveredZone)!;
           return (
@@ -149,7 +146,6 @@ export const TrafficDensityMap = () => {
         })()}
       </div>
 
-      {/* Legend */}
       <div className="flex items-center justify-center gap-3 mt-2">
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-destructive" />
@@ -168,6 +164,12 @@ export const TrafficDensityMap = () => {
           <span className="text-[9px] font-mono text-muted-foreground">Düşük (&lt;30%)</span>
         </div>
       </div>
+
+      {isLive && (
+        <div className="text-[8px] font-mono text-muted-foreground mt-2 text-center">
+          Kaynak: {trafficData.source} • Güncelleme: {new Date(trafficData.timestamp).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+        </div>
+      )}
     </DashboardPanel>
   );
 };

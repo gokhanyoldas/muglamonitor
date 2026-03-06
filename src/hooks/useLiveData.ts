@@ -3,17 +3,28 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type DataType =
   | "weather" | "air_quality" | "dams" | "protocol" | "news"
-  | "economy" | "real_estate" | "tourism" | "road_works" | "energy" | "trends" | "all";
+  | "economy" | "real_estate" | "tourism" | "road_works" | "energy" | "trends"
+  | "demographics" | "education" | "health" | "agriculture" | "traffic_density"
+  | "gastronomy" | "budget" | "culture" | "life_quality"
+  | "all";
+
+// Map reference data types to their edge function
+const REFERENCE_TYPES = new Set([
+  "demographics", "education", "health", "agriculture",
+  "traffic_density", "gastronomy", "budget", "culture", "life_quality",
+]);
 
 export function useLiveData<T = any>(type: DataType, options?: {
   refetchInterval?: number;
   enabled?: boolean;
   extraBody?: Record<string, any>;
 }) {
+  const functionName = REFERENCE_TYPES.has(type) ? "reference-data" : "data-scrape";
+
   return useQuery<T | null>({
     queryKey: ["live-data", type, options?.extraBody],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("data-scrape", {
+      const { data, error } = await supabase.functions.invoke(functionName, {
         body: { type, ...options?.extraBody },
       });
       if (error) {
@@ -22,9 +33,9 @@ export function useLiveData<T = any>(type: DataType, options?: {
       }
       return data?.data ?? null;
     },
-    refetchInterval: options?.refetchInterval ?? 10 * 60 * 1000, // 10 min default
+    refetchInterval: options?.refetchInterval ?? (REFERENCE_TYPES.has(type) ? 60 * 60 * 1000 : 10 * 60 * 1000),
     enabled: options?.enabled ?? true,
     retry: 1,
-    staleTime: 5 * 60 * 1000,
+    staleTime: REFERENCE_TYPES.has(type) ? 30 * 60 * 1000 : 5 * 60 * 1000,
   });
 }
