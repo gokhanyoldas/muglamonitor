@@ -78,7 +78,7 @@ export const EnvironmentSection = () => {
           <Gauge value={72} max={100} label="Orman Alan" unit="%" variant="primary" />
         </div>
          <span className="text-[9px] font-mono text-muted-foreground uppercase mb-2 block">
-           Baraj Doluluk Oranları {damList[0]?.estimated && <span className="text-warning">(Yağış Tahmini)</span>} <LiveBadge loading={dLoading} />
+           Baraj Doluluk Oranları {isEstimated && <span className="text-warning">(Yağış Tahmini)</span>} <LiveBadge loading={dLoading} />
          </span>
         <div className="space-y-1.5 mb-3">
           {damList.map((dam: any, i: number) => (
