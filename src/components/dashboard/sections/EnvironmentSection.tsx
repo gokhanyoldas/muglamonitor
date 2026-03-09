@@ -76,9 +76,9 @@ export const EnvironmentSection = () => {
         <div className="flex justify-around mb-3">
           <Gauge value={72} max={100} label="Orman Alan" unit="%" variant="primary" />
         </div>
-        <span className="text-[9px] font-mono text-muted-foreground uppercase mb-2 block">
-          Baraj Doluluk Oranları <LiveBadge loading={dLoading} />
-        </span>
+         <span className="text-[9px] font-mono text-muted-foreground uppercase mb-2 block">
+           Baraj Doluluk Oranları {damList[0]?.estimated && <span className="text-warning">(Yağış Tahmini)</span>} <LiveBadge loading={dLoading} />
+         </span>
         <div className="space-y-1.5 mb-3">
           {damList.map((dam: any, i: number) => (
             <div key={i} className="flex items-center gap-2 px-2 py-1 rounded bg-muted/20">
