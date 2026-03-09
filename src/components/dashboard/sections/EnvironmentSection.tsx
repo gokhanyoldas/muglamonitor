@@ -43,10 +43,23 @@ export const EnvironmentSection = () => {
           <StatCard label="Rüzgar" value={String(w.wind_speed)} unit="km/h" />
           <StatCard label="UV İndeksi" value={String(w.uv_index)} variant="accent" />
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2 mb-3">
           <StatCard label="Deniz Suyu" value={String(w.sea_temp ?? 16)} unit="°C" variant="accent" />
-          <StatCard label="Dalga Yüksekliği" value="0.8" unit="m" />
+          <StatCard label="Durum" value={w.condition || "Bilinmiyor"} />
         </div>
+        {w.districts && Array.isArray(w.districts) && w.districts.length > 0 && (
+          <>
+            <span className="text-[9px] font-mono text-muted-foreground uppercase mb-2 block">İlçe Sıcaklıkları</span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 mb-2">
+              {w.districts.map((d: any, i: number) => (
+                <div key={i} className="flex items-center justify-between px-2 py-1 rounded bg-muted/20">
+                  <span className="text-[10px] font-mono text-foreground/80">{d.name}</span>
+                  <span className="text-[10px] font-mono font-bold text-primary">{d.temperature}°C</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
         <LiveBadge loading={wLoading} />
       </DashboardPanel>
 
