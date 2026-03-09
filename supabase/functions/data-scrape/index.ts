@@ -100,18 +100,157 @@ function parseProtocolHtml(html: string): any[] {
   return members;
 }
 
-// ========== OTHER SCRAPERS (unchanged) ==========
-async function scrapeWeather(apiKey: string) {
-  return firecrawlScrape(apiKey, "https://www.mgm.gov.tr/tahmin/il-ve-ilceler.aspx?il=Mu%C4%9Fla",
-    `Extract current weather for Muğla province. Return JSON: { temperature, humidity, wind_speed, wind_direction, condition, uv_index, sea_temp, districts: [{ name, temperature, condition }] }`);
+// ========== WEATHER — Open-Meteo (free, no key) ==========
+async function scrapeWeather(_apiKey: string) {
+  try {
+    // Muğla il merkezi (Menteşe) koordinatları
+    const lat = 37.2153, lon = 28.3636;
+    const res = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,uv_index,weather_code&timezone=Europe/Istanbul`
+    );
+    if (!res.ok) { console.error("Open-Meteo error:", res.status); return null; }
+    const data = await res.json();
+    const c = data.current;
+
+    // İlçe koordinatları
+    const districts = [
+      { name: "Menteşe", lat: 37.2153, lon: 28.3636 },
+      { name: "Bodrum", lat: 37.0344, lon: 27.4305 },
+      { name: "Fethiye", lat: 36.6538, lon: 29.1258 },
+      { name: "Marmaris", lat: 36.8554, lon: 28.2744 },
+      { name: "Milas", lat: 37.3167, lon: 27.7833 },
+      { name: "Dalaman", lat: 36.7667, lon: 28.8000 },
+      { name: "Datça", lat: 36.7333, lon: 27.6833 },
+      { name: "Köyceğiz", lat: 36.9667, lon: 28.6833 },
+      { name: "Ortaca", lat: 36.8333, lon: 28.7667 },
+      { name: "Yatağan", lat: 37.3333, lon: 28.1333 },
+      { name: "Kavaklıdere", lat: 37.4333, lon: 28.3667 },
+      { name: "Ula", lat: 37.1000, lon: 28.4167 },
+      { name: "Seydikemer", lat: 36.6167, lon: 29.3500 },
+    ];
+
+    // Tüm ilçeler için paralel istek
+    const districtPromises = districts.map(async (d) => {
+      try {
+        const r = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${d.lat}&longitude=${d.lon}&current=temperature_2m,weather_code&timezone=Europe/Istanbul`
+        );
+        if (!r.ok) return { name: d.name, temperature: null, condition: "Bilinmiyor" };
+        const dd = await r.json();
+        return {
+          name: d.name,
+          temperature: Math.round(dd.current.temperature_2m),
+          condition: weatherCodeToCondition(dd.current.weather_code),
+        };
+      } catch { return { name: d.name, temperature: null, condition: "Bilinmiyor" }; }
+    });
+
+    const districtResults = await Promise.all(districtPromises);
+
+    // Deniz suyu sıcaklığı — Open-Meteo Marine API
+    let seaTemp = 16;
+    try {
+      const marineRes = await fetch(
+        `https://marine-api.open-meteo.com/v1/marine?latitude=36.85&longitude=28.27&current=sea_surface_temperature&timezone=Europe/Istanbul`
+      );
+      if (marineRes.ok) {
+        const marineData = await marineRes.json();
+        seaTemp = Math.round(marineData.current?.sea_surface_temperature ?? 16);
+      }
+    } catch { /* fallback */ }
+
+    return {
+      temperature: Math.round(c.temperature_2m),
+      humidity: Math.round(c.relative_humidity_2m),
+      wind_speed: Math.round(c.wind_speed_10m),
+      wind_direction: c.wind_direction_10m,
+      uv_index: Math.round(c.uv_index),
+      condition: weatherCodeToCondition(c.weather_code),
+      sea_temp: seaTemp,
+      districts: districtResults,
+    };
+  } catch (e) { console.error("Weather fetch error:", e); return null; }
 }
-async function scrapeAirQuality(apiKey: string) {
-  return firecrawlScrape(apiKey, "https://www.havaizleme.gov.tr/",
-    `Extract air quality data for Muğla stations. Return JSON: { aqi, pm25, pm10, quality_label, stations: [{ name, aqi, pm25, pm10 }] }`);
+
+function weatherCodeToCondition(code: number): string {
+  if (code === 0) return "Açık";
+  if (code <= 3) return "Parçalı Bulutlu";
+  if (code <= 48) return "Sisli";
+  if (code <= 57) return "Çisenti";
+  if (code <= 67) return "Yağmurlu";
+  if (code <= 77) return "Karlı";
+  if (code <= 82) return "Sağanak";
+  if (code <= 86) return "Kar Yağışlı";
+  if (code <= 99) return "Gök Gürültülü";
+  return "Bilinmiyor";
 }
-async function scrapeDamLevels(apiKey: string) {
-  return firecrawlScrape(apiKey, "https://www.dsi.gov.tr/AnaSayfa/Detay/Baraj_Doluluk_Oranlari",
-    `Extract dam levels for Muğla: { name, occupancy_rate, capacity, current_volume, date }. Focus on: Mumcular, Yedigöller, Geyik, Dalaman barajları.`);
+
+// ========== AIR QUALITY — Open-Meteo (free) ==========
+async function scrapeAirQuality(_apiKey: string) {
+  try {
+    const res = await fetch(
+      `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=37.2153&longitude=28.3636&current=pm2_5,pm10,european_aqi&timezone=Europe/Istanbul`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const c = data.current;
+    const aqi = c.european_aqi ?? 0;
+    let quality_label = "İyi";
+    if (aqi > 100) quality_label = "Kötü";
+    else if (aqi > 75) quality_label = "Hassas";
+    else if (aqi > 50) quality_label = "Orta";
+    return { aqi, pm25: Math.round(c.pm2_5 ?? 0), pm10: Math.round(c.pm10 ?? 0), quality_label };
+  } catch (e) { console.error("Air quality error:", e); return null; }
+}
+
+// ========== DAM LEVELS — DSİ direct HTML scrape ==========
+async function scrapeDamLevels(_apiKey: string) {
+  // Muğla barajları ve güncel bilinen kapasiteleri
+  const muglaDams = [
+    "Mumcular", "Yedigöller", "Geyik", "Dalaman", "Akköprü", "Kemer", "Yılanlı", "Çamiçi",
+  ];
+  try {
+    const res = await fetch("https://www.dsi.gov.tr/AnaSayfa/Detay/Baraj_Doluluk_Oranlari", {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "text/html,application/xhtml+xml",
+        "Accept-Language": "tr-TR,tr;q=0.9",
+      },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) { console.error("DSİ fetch failed:", res.status); return null; }
+    const html = await res.text();
+    
+    // Parse table rows
+    const results: any[] = [];
+    const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+    let match;
+    while ((match = rowRegex.exec(html)) !== null) {
+      const cells: string[] = [];
+      const cellRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+      let cellMatch;
+      while ((cellMatch = cellRegex.exec(match[1])) !== null) {
+        cells.push(cellMatch[1].replace(/<[^>]*>/g, "").trim());
+      }
+      if (cells.length >= 3) {
+        const name = cells[0] || cells[1] || "";
+        const isMugla = muglaDams.some(d => name.toLowerCase().includes(d.toLowerCase()));
+        if (isMugla) {
+          // Try to extract occupancy rate from cells
+          const rateCell = cells.find(c => c.includes("%")) || cells[cells.length - 1];
+          const rate = parseInt(rateCell?.replace("%", "")?.trim()) || 50;
+          results.push({ name: name.trim(), occupancy_rate: rate, capacity: "" });
+        }
+      }
+    }
+    
+    if (results.length > 0) {
+      console.log(`Parsed ${results.length} Muğla dams from DSİ`);
+      return results;
+    }
+    console.log("DSİ HTML parsing yielded no results, returning null");
+    return null;
+  } catch (e) { console.error("DSİ scrape error:", e); return null; }
 }
 async function scrapeNews(apiKey: string, keywords?: string[]) {
   const kwList = keywords && keywords.length > 0 ? keywords : ["Muğla"];
