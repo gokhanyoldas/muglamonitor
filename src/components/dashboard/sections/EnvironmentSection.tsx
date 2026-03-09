@@ -28,8 +28,9 @@ export const EnvironmentSection = () => {
   const aq = airData || defaultAirQuality;
   const dams = (Array.isArray(damData) ? damData : damData?.dams || damData) || defaultDams;
   const damList = Array.isArray(dams) && dams.length > 0
-    ? dams.map((d: any) => ({ name: d.name, rate: d.occupancy_rate ?? d.rate ?? 50, capacity: d.capacity ?? "" }))
+    ? dams.map((d: any) => ({ name: d.name, rate: d.occupancy_rate ?? d.rate ?? 50, capacity: d.capacity ?? "", estimated: d.estimated ?? false }))
     : defaultDams;
+  const isEstimated = damList.some((d: any) => d.estimated);
 
   const LiveBadge = ({ loading }: { loading: boolean }) =>
     loading ? <Loader2 size={10} className="animate-spin text-muted-foreground inline ml-1" /> : null;
