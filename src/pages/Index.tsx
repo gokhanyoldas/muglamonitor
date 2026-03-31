@@ -17,6 +17,8 @@ import { ProtocolSection } from "@/components/dashboard/sections/ProtocolSection
 import { TrendTopicsSection } from "@/components/dashboard/sections/TrendTopicsSection";
 import { LocalGovBudgetSection } from "@/components/dashboard/sections/LocalGovBudgetSection";
 import { useLiveData } from "@/hooks/useLiveData";
+import { SmartCard } from "@/components/intelligence/SmartCard";
+import { LiveIndicator } from "@/components/intelligence/LiveIndicator";
 
 const sectionComponents: Record<Exclude<DashboardTab, "genel">, React.FC[]> = {
   ekonomi: [EconomySection],
@@ -31,6 +33,7 @@ const sectionComponents: Record<Exclude<DashboardTab, "genel">, React.FC[]> = {
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<DashboardTab>("genel");
+  const [liveStatuses, setLiveStatuses] = useState<Record<string, boolean>>({});
 
   // Live data hooks for top summary bar
   const { data: weatherData } = useLiveData<any>("weather", { refetchInterval: 15 * 60 * 1000 });
@@ -64,19 +67,26 @@ const Index = () => {
         {/* Top summary bar - LIVE */}
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-4">
           {[
-            { label: "Nüfus", value: population, color: "text-primary" },
-            { label: "Turist/Yıl", value: annualTourists, color: "text-accent" },
-            { label: "İşsizlik", value: unemployment, color: "text-warning" },
-            { label: "Hava", value: temperature, color: "text-foreground" },
-            { label: "AQI", value: String(aqi), color: "text-success" },
-            { label: "Otel Doluluk", value: hotelOccupancy, color: "text-accent" },
-            { label: "Baraj", value: avgDam, color: "text-warning" },
-            { label: "Güvenlik", value: "78/100", color: "text-primary" },
+            { label: "Nüfus", value: population, color: "text-primary", category: "demographics" },
+            { label: "Turist/Yıl", value: annualTourists, color: "text-accent", category: "tourism" },
+            { label: "İşsizlik", value: unemployment, color: "text-warning", category: "economy" },
+            { label: "Hava", value: temperature, color: "text-foreground", category: "weather" },
+            { label: "AQI", value: String(aqi), color: "text-success", category: "air_quality" },
+            { label: "Otel Doluluk", value: hotelOccupancy, color: "text-accent", category: "tourism" },
+            { label: "Baraj", value: avgDam, color: "text-warning", category: "dams" },
+            { label: "Güvenlik", value: "78/100", color: "text-primary", category: "security" },
           ].map((item) => (
-            <div key={item.label} className="bg-secondary/30 border border-border/50 rounded-md px-2.5 py-1.5 text-center">
-              <div className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider">{item.label}</div>
-              <div className={`text-sm font-mono font-bold ${item.color}`}>{item.value}</div>
-            </div>
+            <SmartCard key={item.label} category={item.category as any} onDataUpdate={(_, isLive) => {
+              setLiveStatuses(prev => ({ ...prev, [item.label]: isLive }));
+            }}>
+              <div className="bg-secondary/30 border border-border/50 rounded-md px-2.5 py-1.5 text-center group relative">
+                <div className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider">{item.label}</div>
+                <div className={`text-sm font-mono font-bold ${item.color}`}>{item.value}</div>
+                {liveStatuses[item.label] && (
+                  <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                )}
+              </div>
+            </SmartCard>
           ))}
         </div>
 
@@ -84,28 +94,48 @@ const Index = () => {
         {isGenel ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-3">
             <div className="space-y-3">
-              <EconomySection />
+              <SmartCard category="economy">
+                <EconomySection />
+              </SmartCard>
             </div>
             <div className="space-y-3">
-              <EnvironmentSection />
+              <SmartCard category="environment">
+                <EnvironmentSection />
+              </SmartCard>
             </div>
             <div className="space-y-3">
-              <TourismSection />
-              <CultureAgriSection />
+              <SmartCard category="tourism">
+                <TourismSection />
+              </SmartCard>
+              <SmartCard category="culture">
+                <CultureAgriSection />
+              </SmartCard>
             </div>
             <div className="space-y-3">
-              <SocialIntelSection />
-              <SocialSection />
-              <TransportSection />
-              <EnergySection />
-              <SecuritySection />
+              <SmartCard category="social">
+                <SocialIntelSection />
+              </SmartCard>
+              <SmartCard category="social">
+                <SocialSection />
+              </SmartCard>
+              <SmartCard category="transport">
+                <TransportSection />
+              </SmartCard>
+              <SmartCard category="energy">
+                <EnergySection />
+              </SmartCard>
+              <SmartCard category="security">
+                <SecuritySection />
+              </SmartCard>
             </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
             {sectionComponents[activeTab as Exclude<DashboardTab, "genel">]?.map((Section, i) => (
               <div key={i} className="space-y-3">
-                <Section />
+                <SmartCard category={activeTab as any}>
+                  <Section />
+                </SmartCard>
               </div>
             ))}
           </div>
@@ -114,7 +144,7 @@ const Index = () => {
         {/* Footer */}
         <footer className="mt-4 py-3 border-t border-border/50 text-center">
           <p className="text-[10px] font-mono text-muted-foreground">
-            MUĞLA MONİTÖR v1.0 — Bölgesel İstihbarat Paneli — Canlı veri akışı aktif
+            MUĞLA MONİTÖR v1.0 — Bölgesel İstihbarat Paneli — Intelligence Hub Powered ◆ Canlı veri akışı aktif
           </p>
         </footer>
       </main>
