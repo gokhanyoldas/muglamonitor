@@ -2,7 +2,8 @@ import { DashboardPanel } from "../DashboardPanel";
 import { StatCard } from "../StatCard";
 import { Gauge } from "../Gauge";
 import { StatusList } from "../StatusList";
-import { TreePine, Droplets, Wind, Loader2 } from "lucide-react";
+import { DataFreshnessIndicator } from "@/components/DataFreshnessIndicator";
+import { TreePine, Droplets, Wind, Loader as Loader2 } from "lucide-react";
 import { useLiveData } from "@/hooks/useLiveData";
 
 const defaultDams = [
@@ -37,8 +38,12 @@ export const EnvironmentSection = () => {
 
   return (
     <div className="space-y-3">
-      <DashboardPanel title="Hava & İklim" icon={<Wind size={14} />} badge="CANLI" badgeVariant="live">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+      <div className="relative">
+        <DashboardPanel title="Hava & İklim" icon={<Wind size={14} />} badge="CANLI" badgeVariant="live">
+          <div className="absolute top-2 right-12 opacity-75">
+            <DataFreshnessIndicator category="weather" size="sm" />
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
           <StatCard label="Sıcaklık" value={String(w.temperature)} unit="°C" variant="primary" />
           <StatCard label="Nem" value={String(w.humidity)} unit="%" />
           <StatCard label="Rüzgar" value={String(w.wind_speed)} unit="km/h" />
@@ -61,19 +66,29 @@ export const EnvironmentSection = () => {
             </div>
           </>
         )}
-        <LiveBadge loading={wLoading} />
-      </DashboardPanel>
+          <LiveBadge loading={wLoading} />
+        </DashboardPanel>
+      </div>
 
-      <DashboardPanel title="Hava Kalitesi" badge={aq.quality_label || "İYİ"} badgeVariant="active">
+      <div className="relative">
+        <DashboardPanel title="Hava Kalitesi" badge={aq.quality_label || "İYİ"} badgeVariant="active">
+          <div className="absolute top-2 right-12 opacity-75">
+            <DataFreshnessIndicator category="air_quality" size="sm" />
+          </div>
         <div className="flex justify-around">
           <Gauge value={aq.aqi} max={100} label="AQI" variant="primary" />
           <Gauge value={aq.pm25} max={50} label="PM2.5" variant="primary" />
           <Gauge value={aq.pm10} max={100} label="PM10" variant="primary" />
         </div>
-        <LiveBadge loading={aLoading} />
-      </DashboardPanel>
+          <LiveBadge loading={aLoading} />
+        </DashboardPanel>
+      </div>
 
-      <DashboardPanel title="Su & Orman" icon={<Droplets size={14} />} badge="CANLI" badgeVariant="live">
+      <div className="relative">
+        <DashboardPanel title="Su & Orman" icon={<Droplets size={14} />} badge="CANLI" badgeVariant="live">
+          <div className="absolute top-2 right-12 opacity-75">
+            <DataFreshnessIndicator category="dams" size="sm" />
+          </div>
         <div className="flex justify-around mb-3">
           <Gauge value={72} max={100} label="Orman Alan" unit="%" variant="primary" />
         </div>
@@ -104,7 +119,8 @@ export const EnvironmentSection = () => {
           { label: "Koruma Alanları", value: "12 bölge", status: "info" },
           { label: "Geri Dönüşüm Oranı", value: "34%", status: "warning" },
         ]} />
-      </DashboardPanel>
+        </DashboardPanel>
+      </div>
 
       <DashboardPanel title="Biyoçeşitlilik" icon={<TreePine size={14} />}>
         <StatusList items={[

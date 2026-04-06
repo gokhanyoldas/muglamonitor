@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import { intelligenceHub } from "@/lib/intelligence-hub";
 import { AnomalyPanel } from "@/components/intelligence/AnomalyPanel";
 import { AIStrategyPanel } from "@/components/intelligence/AIStrategyPanel";
+import { DataQualityDashboard } from "@/components/DataQualityDashboard";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => {
           </Routes>
           <AnomalyPanel />
           <AIStrategyPanel />
+          <DataQualityDashboard />
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
