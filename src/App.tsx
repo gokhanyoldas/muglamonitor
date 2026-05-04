@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import SocialIntel from "./pages/SocialIntel";
+import OSINTDashboard from "./pages/OSINTDashboard";
 import NotFound from "./pages/NotFound";
 import { intelligenceHub } from "@/lib/intelligence-hub";
 import { AnomalyPanel } from "@/components/intelligence/AnomalyPanel";
@@ -31,6 +32,7 @@ const App = () => {
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/social-intel" element={<SocialIntel />} />
+            <Route path="/osint" element={<OSINTDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
