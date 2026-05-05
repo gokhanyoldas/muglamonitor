@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { osintDataManager } from "@/services/osint-data-manager";
+import { dataSyncService, SyncStatus } from "@/services/data-sync-service";
+import { getCategoryStats } from "@/services/sample-data-service";
 import { IntelligenceFeed } from "@/components/intelligence/IntelligenceFeed";
 import { LiveMap } from "@/components/intelligence/LiveMap";
 import { AnomalyAlertSystem } from "@/components/intelligence/AnomalyAlertSystem";
-import { CircleAlert as AlertCircle, RefreshCw, Database } from "lucide-react";
+import { CategoryCard } from "@/components/intelligence/CategoryCard";
+import { CircleAlert as AlertCircle, RefreshCw, Database, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -14,66 +17,108 @@ export default function OSINTDashboard() {
     sourceCount: 0,
     lastUpdate: Date.now(),
   });
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [dataFreshness, setDataFreshness] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>({
+    isRefreshing: false,
+    lastSync: null,
+    nextSync: null,
+    error: null,
+    itemsCount: 0,
+    fromCache: false,
+    dataAge: "very_old",
+  });
+  const [categoryStats, setCategoryStats] = useState(
+    getCategoryStats(osintDataManager.getIntelligenceFeed())
+  );
 
   useEffect(() => {
+    // Start data sync service
+    dataSyncService.startSync();
+
+    // Subscribe to sync status changes
+    const unsubscribe = dataSyncService.subscribe((status) => {
+      setSyncStatus(status);
+      updateStats();
+    });
+
+    // Update stats
     updateStats();
     const interval = setInterval(updateStats, 5000);
-    return () => clearInterval(interval);
+
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+      dataSyncService.stopSync();
+    };
   }, []);
 
   const updateStats = () => {
     const feed = osintDataManager.getIntelligenceFeed();
     const critical = osintDataManager.getCriticalItems();
     const sources = osintDataManager.getSources();
-    const health = osintDataManager.getHealthStatus();
 
     setStats({
       totalItems: feed.length,
       criticalItems: critical.length,
-      sourceCount: Object.keys(health).length,
+      sourceCount: sources.length,
       lastUpdate: Date.now(),
     });
 
-    const oldestUpdate = Math.min(
-      ...Object.values(health)
-        .filter((s) => s.lastUpdate)
-        .map((s) => s.lastUpdate)
-    );
+    setCategoryStats(getCategoryStats(feed));
+  };
 
-    if (oldestUpdate) {
-      const age = Date.now() - oldestUpdate;
-      if (age < 60000) setDataFreshness("Canlı");
-      else if (age < 300000) setDataFreshness("Az eski");
-      else setDataFreshness("Eski veriler gösteriliyor");
+  const handleManualRefresh = async () => {
+    await dataSyncService.manualRefresh();
+    updateStats();
+  };
+
+  const getDataAgeLabel = (age: string): string => {
+    switch (age) {
+      case "fresh":
+        return "Canlı";
+      case "slightly_old":
+        return "Az eski";
+      case "old":
+        return "Eski";
+      case "very_old":
+      default:
+        return "Çok eski";
     }
   };
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    // Simulate refresh
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    updateStats();
-    setIsRefreshing(false);
+  const getDataAgeBadgeColor = (age: string): string => {
+    switch (age) {
+      case "fresh":
+        return "bg-green-600";
+      case "slightly_old":
+        return "bg-yellow-600";
+      case "old":
+        return "bg-orange-600";
+      case "very_old":
+      default:
+        return "bg-red-600";
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4">
       <AnomalyAlertSystem />
 
-      {dataFreshness === "Eski veriler gösteriliyor" && (
+      {syncStatus.error && (
         <div className="mb-4 p-3 rounded-lg bg-yellow-950/50 border border-yellow-700/50 flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="text-sm font-semibold text-yellow-300">Veri Uyarısı</p>
-            <p className="text-xs text-yellow-200/70 mt-0.5">
-              Son başarılı veriler gösteriliyor. Gerçek zamanlı veri henüz güncellenemedi.
-            </p>
+            <p className="text-xs text-yellow-200/70 mt-0.5">{syncStatus.error}</p>
+            {syncStatus.fromCache && (
+              <p className="text-xs text-yellow-200/60 mt-1">
+                Son başarılı veriler gösteriliyor.
+              </p>
+            )}
           </div>
         </div>
       )}
 
+      {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
@@ -88,19 +133,22 @@ export default function OSINTDashboard() {
             </p>
           </div>
 
-          <Button
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="bg-cyan-600 hover:bg-cyan-700"
-          >
-            <RefreshCw
-              className={`w-4 h-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`}
-            />
-            {isRefreshing ? "Yenileniyor..." : "Yenile"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={handleManualRefresh}
+              disabled={syncStatus.isRefreshing}
+              className="bg-cyan-600 hover:bg-cyan-700"
+            >
+              <RefreshCw
+                className={`w-4 h-4 mr-2 ${syncStatus.isRefreshing ? "animate-spin" : ""}`}
+              />
+              {syncStatus.isRefreshing ? "Yenileniyor..." : "Yenile"}
+            </Button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-3 mt-4">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
           <div className="p-3 rounded-lg bg-slate-800/50 border border-slate-700">
             <p className="text-xs font-semibold text-slate-400 uppercase">
               Toplam Bildirim
@@ -133,39 +181,79 @@ export default function OSINTDashboard() {
               Veri Durumu
             </p>
             <Badge
-              className={`mt-1 text-xs ${
-                dataFreshness === "Canlı"
-                  ? "bg-green-600"
-                  : dataFreshness === "Az eski"
-                    ? "bg-yellow-600"
-                    : "bg-red-600"
-              }`}
+              className={`mt-1 text-xs ${getDataAgeBadgeColor(syncStatus.dataAge)}`}
             >
-              {dataFreshness || "Kontrol Ediliyor"}
+              {getDataAgeLabel(syncStatus.dataAge)}
             </Badge>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 space-y-4">
-          <div className="h-96">
-            <LiveMap />
-          </div>
+      {/* Main Grid: Map and Feed */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        <div className="lg:col-span-2 h-96">
+          <LiveMap />
         </div>
-
         <div className="h-96">
           <IntelligenceFeed />
         </div>
       </div>
 
-      <div className="mt-6 p-4 rounded-lg bg-slate-800/30 border border-slate-700 text-xs text-slate-400 space-y-2">
-        <p className="font-semibold text-slate-300">Sistem Bilgileri</p>
-        <ul className="list-disc list-inside space-y-1">
-          <li>Veri kaynakları: Google Alerts (Gmail), RSS Feeds</li>
-          <li>Güncelleme aralığı: Her 5-15 dakika</li>
+      {/* Category Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <CategoryCard
+          title="Güvenlik & Tehdit"
+          icon={<AlertCircle className="w-5 h-5" />}
+          bgColor="bg-gradient-to-br from-orange-950/20 via-orange-950/10 to-transparent"
+          borderColor="border-orange-700/30 hover:border-orange-700/50"
+          items={categoryStats.security.items}
+          category="security"
+        />
+
+        <CategoryCard
+          title="Hava Durumu"
+          icon={<AlertCircle className="w-5 h-5" />}
+          bgColor="bg-gradient-to-br from-blue-950/20 via-blue-950/10 to-transparent"
+          borderColor="border-blue-700/30 hover:border-blue-700/50"
+          items={categoryStats.weather.items}
+          category="weather"
+        />
+
+        <CategoryCard
+          title="Ekonomi & Turizm"
+          icon={<AlertCircle className="w-5 h-5" />}
+          bgColor="bg-gradient-to-br from-green-950/20 via-green-950/10 to-transparent"
+          borderColor="border-green-700/30 hover:border-green-700/50"
+          items={categoryStats.economy.items}
+          category="economy"
+        />
+
+        <CategoryCard
+          title="Sağlık & Kamu"
+          icon={<AlertCircle className="w-5 h-5" />}
+          bgColor="bg-gradient-to-br from-red-950/20 via-red-950/10 to-transparent"
+          borderColor="border-red-700/30 hover:border-red-700/50"
+          items={categoryStats.health.items}
+          category="health"
+        />
+      </div>
+
+      {/* System Info Footer */}
+      <div className="p-4 rounded-lg bg-slate-800/30 border border-slate-700 text-xs text-slate-400 space-y-2">
+        <div className="flex items-center gap-2">
+          <Activity className="w-4 h-4 text-blue-400" />
+          <p className="font-semibold text-slate-300">Sistem Bilgileri</p>
+        </div>
+        <ul className="list-disc list-inside space-y-1 ml-6">
+          <li>Veri kaynakları: Google Apps Script, Gmail Alerts, RSS Feeds</li>
+          <li>
+            Güncelleme aralığı: Her{" "}
+            {Math.round(dataSyncService.getStatus().nextSync ? (dataSyncService.getStatus().nextSync - Date.now()) / 1000 / 60 : 0) || 5} dakika
+          </li>
+          <li>Son güncelleme: {syncStatus.lastSync ? new Date(syncStatus.lastSync).toLocaleTimeString("tr-TR") : "Hiç"}</li>
           <li>Duygu analizi: Client-side işleme</li>
           <li>Anomali tespiti: Real-time</li>
+          <li>Veri saklama: localStorage + Supabase</li>
         </ul>
       </div>
     </div>
