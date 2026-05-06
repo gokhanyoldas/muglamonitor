@@ -6,7 +6,7 @@ export type DataType =
   | "economy" | "real_estate" | "tourism" | "road_works" | "energy" | "trends"
   | "demographics" | "education" | "health" | "agriculture" | "traffic_density"
   | "gastronomy" | "budget" | "culture" | "life_quality"
-  | "all";
+  | "earthquakes" | "all";
 
 // Map reference data types to their edge function
 const REFERENCE_TYPES = new Set([
