@@ -12,10 +12,14 @@ import { intelligenceHub } from "@/lib/intelligence-hub";
 import { AnomalyPanel } from "@/components/intelligence/AnomalyPanel";
 import { AIStrategyPanel } from "@/components/intelligence/AIStrategyPanel";
 import { DataQualityDashboard } from "@/components/DataQualityDashboard";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { AuthPage } from "@/components/auth/AuthPage";
 
 const queryClient = new QueryClient();
 
-const App = () => {
+const AppContent = () => {
+  const { user, isLoading, isGuest, enterAsGuest } = useAuth();
+
   useEffect(() => {
     intelligenceHub.start();
     return () => {
@@ -23,23 +27,50 @@ const App = () => {
     };
   }, []);
 
+  // Show loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-10 h-10 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center mx-auto mb-3 animate-pulse">
+            <span className="text-primary font-mono font-bold">M</span>
+          </div>
+          <p className="text-[10px] font-mono text-muted-foreground">Yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth page if not logged in and not guest
+  if (!user && !isGuest) {
+    return <AuthPage onAuth={enterAsGuest} />;
+  }
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/social-intel" element={<SocialIntel />} />
+        <Route path="/osint" element={<OSINTDashboard />} />
+        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      <AnomalyPanel />
+      <AIStrategyPanel />
+      <DataQualityDashboard />
+    </BrowserRouter>
+  );
+};
+
+const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/social-intel" element={<SocialIntel />} />
-            <Route path="/osint" element={<OSINTDashboard />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <AnomalyPanel />
-          <AIStrategyPanel />
-          <DataQualityDashboard />
-        </BrowserRouter>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
