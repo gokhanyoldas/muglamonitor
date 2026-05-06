@@ -1,6 +1,4 @@
-import { osintDataManager, IntelligenceItem } from "./osint-data-manager";
-import { googleAppsScriptBridge } from "./google-apps-script-bridge";
-import { generateMuglaSampleData } from "./sample-data-service";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface SyncStatus {
   isRefreshing: boolean;
@@ -27,25 +25,13 @@ class DataSyncService {
   private listeners: Set<(status: SyncStatus) => void> = new Set();
   private refreshIntervalMs = 5 * 60 * 1000; // 5 minutes
 
-  constructor() {
-    this.initializeSampleData();
-  }
-
-  private initializeSampleData() {
-    const sampleData = generateMuglaSampleData();
-    osintDataManager.addIntelligenceItem("sample_data", sampleData);
-    this.updateStatus();
-  }
-
   async startSync(intervalMs?: number) {
     if (intervalMs) {
       this.refreshIntervalMs = intervalMs;
     }
 
-    // Initial fetch
     await this.performSync();
 
-    // Schedule recurring syncs
     this.syncInterval = setInterval(() => {
       this.performSync();
     }, this.refreshIntervalMs);
@@ -66,18 +52,23 @@ class DataSyncService {
     this.notifyListeners();
 
     try {
-      const result = await googleAppsScriptBridge.fetchFromGAS();
+      // Fetch live data from Supabase Edge Functions
+      const [weatherResult, newsResult, economyResult] = await Promise.allSettled([
+        supabase.functions.invoke("data-scrape", { body: { type: "weather" } }),
+        supabase.functions.invoke("data-scrape", { body: { type: "news" } }),
+        supabase.functions.invoke("data-scrape", { body: { type: "economy" } }),
+      ]);
 
-      if (result.success && result.items) {
-        osintDataManager.addIntelligenceItem("gas_data", result.items);
-        this.status.fromCache = result.fromCache || false;
-      } else if (result.error) {
-        this.status.error = result.error;
-      }
+      let itemsCount = 0;
+      if (weatherResult.status === "fulfilled" && weatherResult.value.data) itemsCount++;
+      if (newsResult.status === "fulfilled" && newsResult.value.data) itemsCount++;
+      if (economyResult.status === "fulfilled" && economyResult.value.data) itemsCount++;
 
+      this.status.itemsCount = itemsCount;
       this.status.lastSync = Date.now();
       this.status.nextSync = Date.now() + this.refreshIntervalMs;
-      this.updateStatus();
+      this.status.fromCache = false;
+      this.updateDataAge();
 
       return this.status;
     } catch (error) {
@@ -89,10 +80,7 @@ class DataSyncService {
     }
   }
 
-  private updateStatus() {
-    const feed = osintDataManager.getIntelligenceFeed();
-    this.status.itemsCount = feed.length;
-
+  private updateDataAge() {
     if (this.status.lastSync) {
       const age = Date.now() - this.status.lastSync;
       if (age < 60000) {
@@ -105,8 +93,6 @@ class DataSyncService {
         this.status.dataAge = "very_old";
       }
     }
-
-    this.notifyListeners();
   }
 
   getStatus(): SyncStatus {
@@ -116,10 +102,7 @@ class DataSyncService {
   subscribe(listener: (status: SyncStatus) => void): () => void {
     this.listeners.add(listener);
     listener(this.status);
-
-    return () => {
-      this.listeners.delete(listener);
-    };
+    return () => { this.listeners.delete(listener); };
   }
 
   private notifyListeners() {
@@ -138,15 +121,6 @@ class DataSyncService {
         this.performSync();
       }, this.refreshIntervalMs);
     }
-  }
-
-  clearAllData() {
-    osintDataManager.clearAllFeeds();
-    this.status.lastSync = null;
-    this.status.nextSync = null;
-    this.status.itemsCount = 0;
-    this.status.error = null;
-    this.notifyListeners();
   }
 }
 

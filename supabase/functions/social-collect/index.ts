@@ -1,168 +1,227 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// supabase/functions/social-collect/index.ts
+// Collects social data from: Google News RSS, Reddit, Ekşi Sözlük
+// No API keys needed - all free sources
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
-// Turkish news RSS feeds — Ulusal + Yerel basın
-const RSS_SOURCES = [
-  // Ulusal
-  { url: "https://www.trthaber.com/xml/rss.xml", name: "TRT Haber" },
-  { url: "https://www.ntv.com.tr/son-dakika.rss", name: "NTV" },
-  { url: "https://www.hurriyet.com.tr/rss/gundem", name: "Hürriyet" },
-  { url: "https://www.sabah.com.tr/rss/gundem.xml", name: "Sabah" },
-  { url: "https://www.milliyet.com.tr/rss/rssnew/gundemrss.xml", name: "Milliyet" },
-  { url: "https://www.haberturk.com/rss/gundem.xml", name: "Habertürk" },
-  { url: "https://t24.com.tr/rss", name: "T24" },
-  { url: "https://www.cumhuriyet.com.tr/rss/son_dakika.xml", name: "Cumhuriyet" },
-  { url: "https://www.sozcu.com.tr/rss/gundem.xml", name: "Sözcü" },
-  { url: "https://www.aa.com.tr/tr/rss/default?cat=guncel", name: "Anadolu Ajansı" },
-  { url: "https://www.dha.com.tr/rss/", name: "DHA" },
-  { url: "https://www.iha.com.tr/rss/", name: "İHA" },
-  // Yerel (Muğla & Ege)
-  { url: "https://www.muglagazetesi.com.tr/rss.xml", name: "Muğla Gazetesi" },
-  { url: "https://www.bodrumgundem.com/feed/", name: "Bodrum Gündem" },
-  { url: "https://www.48haber.com/rss.xml", name: "48 Haber" },
-  { url: "https://www.marmarisgundem.com/feed/", name: "Marmaris Gündem" },
-  { url: "https://www.fethiyegazete.com/feed/", name: "Fethiye Gazete" },
-  { url: "https://www.muglahaberler.com/rss.xml", name: "Muğla Haberler" },
-  { url: "https://www.egehaber.com/rss/", name: "Ege Haber" },
-  { url: "https://www.datcahaber.com/feed/", name: "Datça Haber" },
-];
-
-async function fetchRSS(source: { url: string; name: string }, keywords: string[]): Promise<any[]> {
-  try {
-    const res = await fetch(source.url, {
-      headers: { "User-Agent": "MuglaMonitor/1.0" },
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) return [];
-    const xml = await res.text();
-
-    // Simple XML parsing for RSS items
-    const items: any[] = [];
-    const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-    let match;
-    while ((match = itemRegex.exec(xml)) !== null) {
-      const itemXml = match[1];
-      const title = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]>|<title>(.*?)<\/title>/)?.[1] || itemXml.match(/<title>(.*?)<\/title>/)?.[1] || "";
-      const description = itemXml.match(/<description><!\[CDATA\[(.*?)\]\]>|<description>(.*?)<\/description>/)?.[1] || "";
-      const link = itemXml.match(/<link>(.*?)<\/link>/)?.[1] || "";
-      const pubDate = itemXml.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || "";
-
-      const fullText = `${title} ${description}`.toLowerCase();
-      const matchedKeywords = keywords.filter(kw => fullText.includes(kw.toLowerCase()));
-
-      if (matchedKeywords.length > 0) {
-        items.push({
-          platform: "news",
-          content: title,
-          description: description.replace(/<[^>]*>/g, "").slice(0, 300),
-          source_author: source.name,
-          source_url: link,
-          published_at: pubDate,
-          matched_keywords: matchedKeywords,
-        });
-      }
-    }
-    return items.slice(0, 10);
-  } catch (e) {
-    console.error(`RSS fetch error for ${source.name}:`, e);
-    return [];
-  }
+interface CollectedPost {
+  platform: string;
+  content: string;
+  author: string;
+  url: string;
+  published_at: string;
+  keywords_matched: string[];
 }
 
-async function scrapeWithFirecrawl(keywords: string[]): Promise<any[]> {
-  const apiKey = Deno.env.get("FIRECRAWL_API_KEY");
-  if (!apiKey) {
-    console.log("FIRECRAWL_API_KEY not configured, skipping scrape");
-    return [];
+const DEFAULT_KEYWORDS = ["Muğla", "Bodrum", "Fethiye", "Marmaris", "Milas", "Datça", "Dalaman", "Menteşe", "Ortaca", "Seydikemer"];
+
+// ─── Google News RSS ───
+async function fetchGoogleNews(keywords: string[]): Promise<CollectedPost[]> {
+  const posts: CollectedPost[] = [];
+  
+  // Fetch news for main keyword groups
+  const queries = [
+    keywords.slice(0, 3).join(" OR "),
+    keywords.slice(3, 6).join(" OR "),
+  ];
+
+  for (const query of queries) {
+    try {
+      const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=tr&gl=TR&ceid=TR:tr`;
+      const resp = await fetch(url, { 
+        headers: { "User-Agent": "MuglaMonitor/1.0" },
+        signal: AbortSignal.timeout(10000)
+      });
+      
+      if (!resp.ok) continue;
+      const xml = await resp.text();
+      
+      // Parse RSS items
+      const items = xml.match(/<item>([\s\S]*?)<\/item>/g) || [];
+      
+      for (const item of items.slice(0, 15)) {
+        const title = item.match(/<title>([\s\S]*?)<\/title>/)?.[1]?.replace(/<!\[CDATA\[(.*?)\]\]>/, "$1") || "";
+        const link = item.match(/<link>([\s\S]*?)<\/link>/)?.[1] || "";
+        const pubDate = item.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1] || "";
+        const source = item.match(/<source[^>]*>([\s\S]*?)<\/source>/)?.[1]?.replace(/<!\[CDATA\[(.*?)\]\]>/, "$1") || "Google News";
+        
+        const matchedKw = keywords.filter(kw => 
+          title.toLowerCase().includes(kw.toLowerCase())
+        );
+        
+        if (matchedKw.length > 0) {
+          posts.push({
+            platform: "news",
+            content: title.trim(),
+            author: source.trim(),
+            url: link.trim(),
+            published_at: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
+            keywords_matched: matchedKw,
+          });
+        }
+      }
+    } catch (e) {
+      console.error("Google News fetch error:", e);
+    }
+  }
+  
+  return posts;
+}
+
+// ─── Reddit ───
+async function fetchReddit(keywords: string[]): Promise<CollectedPost[]> {
+  const posts: CollectedPost[] = [];
+  
+  const subreddits = ["Turkey", "turkiye"];
+  const searchQuery = keywords.slice(0, 5).join(" OR ");
+  
+  for (const sub of subreddits) {
+    try {
+      const url = `https://www.reddit.com/r/${sub}/search.json?q=${encodeURIComponent(searchQuery)}&sort=new&limit=15&restrict_sr=on&t=week`;
+      const resp = await fetch(url, {
+        headers: { "User-Agent": "MuglaMonitor/1.0 (Educational)" },
+        signal: AbortSignal.timeout(10000)
+      });
+      
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      
+      const children = data?.data?.children || [];
+      for (const child of children) {
+        const post = child.data;
+        if (!post) continue;
+        
+        const text = `${post.title || ""} ${post.selftext || ""}`;
+        const matchedKw = keywords.filter(kw =>
+          text.toLowerCase().includes(kw.toLowerCase())
+        );
+        
+        if (matchedKw.length > 0) {
+          posts.push({
+            platform: "reddit",
+            content: (post.title || "").slice(0, 300),
+            author: `u/${post.author || "unknown"}`,
+            url: `https://reddit.com${post.permalink || ""}`,
+            published_at: new Date((post.created_utc || 0) * 1000).toISOString(),
+            keywords_matched: matchedKw,
+          });
+        }
+      }
+    } catch (e) {
+      console.error("Reddit fetch error:", e);
+    }
+  }
+  
+  return posts;
+}
+
+// ─── Ekşi Sözlük (via public başlık pages) ───
+async function fetchEksiSozluk(keywords: string[]): Promise<CollectedPost[]> {
+  const posts: CollectedPost[] = [];
+  
+  // Ekşi Sözlük topics related to Muğla
+  const topics = ["mugla", "bodrum", "fethiye", "marmaris", "datca"];
+  
+  for (const topic of topics.slice(0, 3)) {
+    try {
+      const url = `https://eksisozluk1923.com/basliklar/gundem?q=${encodeURIComponent(topic)}`;
+      const resp = await fetch(url, {
+        headers: { 
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Accept": "text/html"
+        },
+        signal: AbortSignal.timeout(10000)
+      });
+      
+      if (!resp.ok) continue;
+      const html = await resp.text();
+      
+      // Extract topic titles from HTML
+      const titleMatches = html.match(/<a[^>]*href="\/([^"]+)"[^>]*>([^<]+)<\/a>/g) || [];
+      
+      for (const match of titleMatches.slice(0, 10)) {
+        const hrefMatch = match.match(/href="\/([^"]+)"/);
+        const textMatch = match.match(/>([^<]+)</);
+        
+        if (hrefMatch && textMatch) {
+          const title = textMatch[1].trim();
+          const href = hrefMatch[1];
+          
+          const matchedKw = keywords.filter(kw =>
+            title.toLowerCase().includes(kw.toLowerCase())
+          );
+          
+          if (matchedKw.length > 0 && title.length > 5) {
+            posts.push({
+              platform: "eksisozluk",
+              content: title,
+              author: "Ekşi Sözlük",
+              url: `https://eksisozluk1923.com/${href}`,
+              published_at: new Date().toISOString(),
+              keywords_matched: matchedKw,
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Ekşi Sözlük fetch error:", e);
+    }
+  }
+  
+  return posts;
+}
+
+// ─── Main Handler ───
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // Search for Muğla-related news
-    const query = keywords.slice(0, 5).join(" ") + " Muğla";
-    const res = await fetch("https://api.firecrawl.dev/v1/search", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        query,
-        limit: 10,
-        lang: "tr",
-        country: "TR",
-        tbs: "qdr:d", // last 24 hours
-        scrapeOptions: { formats: ["markdown"] },
+    const body = await req.json().catch(() => ({}));
+    const keywords: string[] = body.keywords || DEFAULT_KEYWORDS;
+    const platforms: string[] = body.platforms || ["news", "reddit", "eksisozluk"];
+
+    const results: CollectedPost[] = [];
+    const errors: string[] = [];
+
+    // Fetch in parallel
+    const fetchers: Promise<CollectedPost[]>[] = [];
+    
+    if (platforms.includes("news")) fetchers.push(fetchGoogleNews(keywords));
+    if (platforms.includes("reddit")) fetchers.push(fetchReddit(keywords));
+    if (platforms.includes("eksisozluk")) fetchers.push(fetchEksiSozluk(keywords));
+
+    const allResults = await Promise.allSettled(fetchers);
+    
+    for (const result of allResults) {
+      if (result.status === "fulfilled") {
+        results.push(...result.value);
+      } else {
+        errors.push(result.reason?.message || "Unknown error");
+      }
+    }
+
+    // Sort by date (newest first)
+    results.sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime());
+
+    return new Response(
+      JSON.stringify({
+        data: {
+          posts: results.slice(0, 50),
+          total: results.length,
+          platforms_queried: platforms,
+          keywords_used: keywords,
+          collected_at: new Date().toISOString(),
+        },
+        errors: errors.length > 0 ? errors : undefined,
       }),
-    });
-
-    if (!res.ok) {
-      console.error("Firecrawl search error:", res.status);
-      return [];
-    }
-
-    const data = await res.json();
-    const results = data.data || [];
-
-    return results.map((r: any) => ({
-      platform: "web",
-      content: r.title || "Başlıksız",
-      description: r.description || r.markdown?.slice(0, 300) || "",
-      source_author: new URL(r.url || "https://unknown.com").hostname,
-      source_url: r.url,
-      matched_keywords: keywords.filter(kw =>
-        `${r.title} ${r.description}`.toLowerCase().includes(kw.toLowerCase())
-      ),
-    }));
-  } catch (e) {
-    console.error("Firecrawl error:", e);
-    return [];
-  }
-}
-
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-
-  try {
-    const { keywords, platform } = await req.json();
-    const kwList: string[] = Array.isArray(keywords) ? keywords : [keywords];
-
-    const tasks: Promise<any[]>[] = [];
-
-    // Always fetch RSS
-    if (!platform || platform === "all" || platform === "news") {
-      for (const source of RSS_SOURCES) {
-        tasks.push(fetchRSS(source, kwList));
-      }
-    }
-
-    // Firecrawl web search
-    if (!platform || platform === "all" || platform === "web") {
-      tasks.push(scrapeWithFirecrawl(kwList));
-    }
-
-    const results = await Promise.all(tasks);
-    const allItems = results.flat();
-
-    return new Response(JSON.stringify({
-      success: true,
-      items: allItems,
-      sources: {
-        rss: RSS_SOURCES.length,
-        firecrawl: Deno.env.get("FIRECRAWL_API_KEY") ? 1 : 0,
-      },
-      collected_at: new Date().toISOString(),
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (e) {
-    console.error("social-collect error:", e);
-    return new Response(JSON.stringify({ success: false, error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });

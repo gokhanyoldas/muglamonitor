@@ -1,112 +1,209 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// supabase/functions/social-analyze/index.ts
+// Sentiment analysis using HuggingFace Inference API (free tier)
+// Model: savasy/bert-base-turkish-sentiment-cased (Turkish BERT)
+// Fallback: Enhanced keyword-based hybrid analysis
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+interface SentimentResult {
+  text: string;
+  sentiment: "positive" | "negative" | "neutral";
+  confidence: number;
+  method: "ai" | "keyword";
+}
+
+// ─── HuggingFace Inference API (Free, no key needed for public models) ───
+async function analyzeWithHuggingFace(texts: string[]): Promise<SentimentResult[] | null> {
+  try {
+    // HuggingFace free inference API for public models
+    const url = "https://api-inference.huggingface.co/models/savasy/bert-base-turkish-sentiment-cased";
+    
+    const results: SentimentResult[] = [];
+    
+    // Process in batches of 5 (rate limit friendly)
+    for (let i = 0; i < texts.length; i += 5) {
+      const batch = texts.slice(i, i + 5);
+      
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inputs: batch }),
+        signal: AbortSignal.timeout(15000),
+      });
+
+      if (resp.status === 503) {
+        // Model is loading - wait and retry once
+        await new Promise(r => setTimeout(r, 5000));
+        const retry = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ inputs: batch }),
+          signal: AbortSignal.timeout(20000),
+        });
+        if (!retry.ok) return null;
+        const retryData = await retry.json();
+        processBatchResults(retryData, batch, results);
+      } else if (resp.ok) {
+        const data = await resp.json();
+        processBatchResults(data, batch, results);
+      } else {
+        return null; // Fallback to keyword
+      }
+      
+      // Small delay between batches
+      if (i + 5 < texts.length) {
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+    
+    return results;
+  } catch (e) {
+    console.error("HuggingFace error:", e);
+    return null;
+  }
+}
+
+function processBatchResults(data: any, texts: string[], results: SentimentResult[]) {
+  if (!Array.isArray(data)) return;
+  
+  for (let j = 0; j < data.length; j++) {
+    const prediction = data[j];
+    const text = texts[j] || "";
+    
+    if (Array.isArray(prediction)) {
+      // Model returns array of [{label, score}]
+      const sorted = prediction.sort((a: any, b: any) => b.score - a.score);
+      const top = sorted[0];
+      
+      let sentiment: "positive" | "negative" | "neutral" = "neutral";
+      if (top.label === "positive" || top.label === "LABEL_1") sentiment = "positive";
+      else if (top.label === "negative" || top.label === "LABEL_0") sentiment = "negative";
+      
+      results.push({
+        text,
+        sentiment,
+        confidence: Math.round(top.score * 100) / 100,
+        method: "ai",
+      });
+    } else {
+      results.push({ text, sentiment: "neutral", confidence: 0.5, method: "ai" });
+    }
+  }
+}
+
+// ─── Enhanced Keyword-based Fallback ───
+function analyzeWithKeywords(texts: string[]): SentimentResult[] {
+  const negativeWords = new Set([
+    "kriz", "tehlike", "ölüm", "felaket", "korku", "panik", "afet", "acil",
+    "alarm", "kötü", "berbat", "feci", "kaos", "düşüş", "kayıp", "çatışma",
+    "işsizlik", "yoksul", "hastalık", "yangın", "suç", "cinayet", "şiddet",
+    "bomba", "terör", "saldırı", "kirli", "nefret", "sorun", "problem",
+    "tehdit", "zarar", "hasar", "mağdur", "şikayet", "kaza", "deprem",
+    "sel", "heyelan", "çöp", "gürültü", "trafik", "sıkıntı", "zam",
+  ]);
+  
+  const positiveWords = new Set([
+    "başarı", "kazanç", "yükseliş", "güzel", "mükemmel", "harika",
+    "umut", "gelişme", "iyileşme", "büyüme", "özgürlük", "inovasyon",
+    "ilerleme", "fırsat", "destek", "yatırım", "proje", "açılış",
+    "festival", "kutlama", "ödül", "rekor", "artış", "büyüdü",
+    "modernizasyon", "yenileme", "iyileştirme", "hizmet", "kalite",
+    "turizm", "güvenli", "temiz", "yeşil", "doğa", "kültür",
+  ]);
+
+  return texts.map(text => {
+    const words = text.toLowerCase().split(/\s+/);
+    let posCount = 0;
+    let negCount = 0;
+    
+    for (const word of words) {
+      const cleaned = word.replace(/[^a-zçğıöşü]/gi, "");
+      if (positiveWords.has(cleaned)) posCount++;
+      if (negativeWords.has(cleaned)) negCount++;
+    }
+    
+    const total = posCount + negCount || 1;
+    const score = (posCount - negCount) / total;
+    
+    let sentiment: "positive" | "negative" | "neutral";
+    let confidence: number;
+    
+    if (score > 0.2) {
+      sentiment = "positive";
+      confidence = Math.min(0.85, 0.5 + score * 0.5);
+    } else if (score < -0.2) {
+      sentiment = "negative";
+      confidence = Math.min(0.85, 0.5 + Math.abs(score) * 0.5);
+    } else {
+      sentiment = "neutral";
+      confidence = 0.55;
+    }
+    
+    return { text, sentiment, confidence: Math.round(confidence * 100) / 100, method: "keyword" as const };
+  });
+}
+
+// ─── Main Handler ───
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
 
   try {
-    const { keywords, platform, collected_data } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
-    const keywordList = Array.isArray(keywords) ? keywords.join(", ") : keywords;
-    const platformText = platform === "all" ? "tüm platformlar" : platform;
-
-    // Include real collected data in context if available
-    let collectedContext = "";
-    if (collected_data && Array.isArray(collected_data) && collected_data.length > 0) {
-      collectedContext = `\n\nAşağıda gerçek zamanlı toplanan veri var, analizini buna dayandır:\n${JSON.stringify(collected_data.slice(0, 20), null, 1)}`;
+    const body = await req.json().catch(() => ({}));
+    const texts: string[] = body.texts || [];
+    
+    if (texts.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "No texts provided. Send { texts: [...] }" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    const systemPrompt = `Sen Muğla bölgesi için sosyal medya ve haber istihbarat analistisin.
-Kullanıcının takip ettiği anahtar kelimelerle ilgili ${platformText} üzerindeki güncel durumu analiz et.
-Gerçek dünya bilgilerine ve sana verilen verilere dayanarak kapsamlı bir analiz yap.
-Yanıtını MUTLAKA aşağıdaki JSON formatında ver, başka hiçbir metin ekleme:
-{
-  "analyses": [
-    {
-      "platform": "twitter|instagram|facebook|youtube|news|web",
-      "content": "İçerik özeti (max 200 karakter)",
-      "sentiment": "positive|negative|neutral",
-      "sentiment_score": 0.0-1.0,
-      "summary": "Kısa analiz notu",
-      "source_author": "Kaynak adı",
-      "engagement_count": 0
+    // Limit to 30 texts per request
+    const limitedTexts = texts.slice(0, 30);
+    
+    // Try AI first, fallback to keywords
+    let results = await analyzeWithHuggingFace(limitedTexts);
+    let method = "ai";
+    
+    if (!results || results.length === 0) {
+      results = analyzeWithKeywords(limitedTexts);
+      method = "keyword_fallback";
     }
-  ],
-  "trend_summary": {
-    "mention_count": 0,
-    "positive_ratio": 0.0-1.0,
-    "negative_ratio": 0.0-1.0,
-    "neutral_ratio": 0.0-1.0,
-    "top_topics": ["konu1", "konu2", "konu3"],
-    "overall_sentiment": "positive|negative|neutral",
-    "key_insights": "Genel değerlendirme paragrafı (3-5 cümle)"
-  },
-  "alerts": [
-    {
-      "label": "Uyarı başlığı",
-      "value": "Detay bilgi",
-      "severity": "ok|warning|critical"
-    }
-  ]
-}`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Anahtar kelimeler: ${keywordList}\nPlatform: ${platformText}\nBölge: Muğla, Türkiye\nTarih: ${new Date().toISOString().split('T')[0]}\nLütfen bu kelimelerle ilgili güncel sosyal medya ve haber istihbaratını analiz et.${collectedContext}` },
-        ],
+    // Calculate summary stats
+    const positive = results.filter(r => r.sentiment === "positive").length;
+    const negative = results.filter(r => r.sentiment === "negative").length;
+    const neutral = results.filter(r => r.sentiment === "neutral").length;
+    const total = results.length || 1;
+    const avgConfidence = results.reduce((s, r) => s + r.confidence, 0) / total;
+
+    return new Response(
+      JSON.stringify({
+        data: {
+          results,
+          summary: {
+            total: results.length,
+            positive_count: positive,
+            negative_count: negative,
+            neutral_count: neutral,
+            positive_ratio: Math.round((positive / total) * 100) / 100,
+            negative_ratio: Math.round((negative / total) * 100) / 100,
+            neutral_ratio: Math.round((neutral / total) * 100) / 100,
+            avg_confidence: Math.round(avgConfidence * 100) / 100,
+            overall_sentiment: positive > negative ? "positive" : negative > positive ? "negative" : "neutral",
+            method,
+          },
+          analyzed_at: new Date().toISOString(),
+        },
       }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit aşıldı, lütfen biraz bekleyin." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Kredi yetersiz." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      return new Response(JSON.stringify({ error: "AI analiz hatası" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || "";
-
-    let parsed;
-    try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { error: "Parse hatası" };
-    } catch {
-      parsed = { raw: content, error: "JSON parse hatası" };
-    }
-
-    return new Response(JSON.stringify(parsed), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (e) {
-    console.error("social-analyze error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });
