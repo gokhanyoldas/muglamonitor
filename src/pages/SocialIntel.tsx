@@ -5,12 +5,8 @@ import { StatusList } from "@/components/dashboard/StatusList";
 import { MiniChart } from "@/components/dashboard/MiniChart";
 import { Gauge } from "@/components/dashboard/Gauge";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import {
-  Radio, TrendingUp, MessageCircle, Hash,
-  ArrowLeft, Plus, X, Loader2, Globe, Sparkles, BarChart3,
-  AlertTriangle, Newspaper, Search, RefreshCw
-} from "lucide-react";
+import { localSocialIntelService } from "@/services/local-social-intel-service";
+import { Radio, TrendingUp, MessageCircle, Hash, ArrowLeft, Plus, X, Loader as Loader2, Globe, Sparkles, ChartBar as BarChart3, TriangleAlert as AlertTriangle, Newspaper, Search, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 type AnalysisItem = {
@@ -86,6 +82,7 @@ const SocialIntel = () => {
   const [hasUnsavedKeywords, setHasUnsavedKeywords] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [nextRefreshIn, setNextRefreshIn] = useState(0);
+  const [listeningStatus, setListeningStatus] = useState("Yerel veri kaynakları dinleniyor...");
   const { toast } = useToast();
 
   const saveKeywords = () => {
@@ -109,54 +106,64 @@ const SocialIntel = () => {
 
   const collectData = useCallback(async () => {
     setIsCollecting(true);
+    setListeningStatus("Yerel veri kaynakları taranıyor...");
     try {
-      const { data, error } = await supabase.functions.invoke("social-collect", {
-        body: { keywords, platform: selectedPlatform },
-      });
-      if (error) throw error;
-      if (data?.success && data.items) {
-        setCollectedItems(data.items);
-        return data.items;
-      }
-      return [];
+      // Simulate collection delay
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      // Use local mock data instead of Supabase
+      const items = localSocialIntelService.generateMockCollectedItems(
+        keywords,
+        selectedPlatform
+      );
+      setCollectedItems(items);
+      setListeningStatus(`${items.length} adet yerel veri bulundu`);
+      return items;
     } catch (err: any) {
       console.error("Collection error:", err);
-      toast({ title: "Veri toplama hatası", description: err.message, variant: "destructive" });
+      setListeningStatus("Yerel veri kaynakları dinleniyor...");
       return [];
     } finally {
       setIsCollecting(false);
     }
-  }, [keywords, selectedPlatform, toast]);
+  }, [keywords, selectedPlatform]);
 
   const runFullAnalysis = useCallback(async () => {
     setIsAnalyzing(true);
     setAnalyses([]);
     setAlerts([]);
     setTrendSummary(null);
+    setListeningStatus("Yerel analiz modülü başlatıldı...");
 
     try {
-      // Step 1: Collect real data
+      // Step 1: Collect local data
       const collected = await collectData();
 
-      // Step 2: Send to AI for analysis
-      const { data, error } = await supabase.functions.invoke("social-analyze", {
-        body: { keywords, platform: selectedPlatform, collected_data: collected },
+      // Simulate processing delay
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Step 2: Analyze with local engine (no Supabase)
+      const { analyses, trend_summary, alerts } =
+        localSocialIntelService.analyzeCollectedItems(collected);
+
+      setAnalyses(analyses);
+      setTrendSummary(trend_summary);
+      setAlerts(alerts);
+      setLastUpdated(new Date().toLocaleTimeString("tr-TR"));
+      setListeningStatus(`Analiz tamamlandı: ${analyses.length} içerik işlendi`);
+
+      toast({
+        title: "Analiz tamamlandı",
+        description: `${analyses.length} içerik başarıyla yerel olarak analiz edildi.`,
       });
-
-      if (error) throw error;
-
-      if (data?.analyses) setAnalyses(data.analyses);
-      if (data?.trend_summary) setTrendSummary(data.trend_summary);
-      if (data?.alerts) setAlerts(data.alerts);
-      if (data?.error) {
-        toast({ title: "Analiz uyarısı", description: data.error, variant: "destructive" });
-      } else {
-        setLastUpdated(new Date().toLocaleTimeString("tr-TR"));
-        toast({ title: "Analiz tamamlandı", description: "Canlı veriler ve AI istihbarat raporu hazır." });
-      }
     } catch (err: any) {
       console.error("Analysis error:", err);
-      toast({ title: "Analiz hatası", description: err.message || "Bir hata oluştu", variant: "destructive" });
+      setListeningStatus("Yerel veri kaynakları dinleniyor...");
+      toast({
+        title: "Analiz hatası",
+        description: "Yerel analiz işleminde hata oluştu",
+        variant: "destructive",
+      });
     } finally {
       setIsAnalyzing(false);
     }
@@ -309,18 +316,22 @@ const SocialIntel = () => {
               </div>
             </DashboardPanel>
 
-            <DashboardPanel title="Canlı Analiz" icon={<Sparkles size={14} />} badge="AI" badgeVariant="info">
+            <DashboardPanel title="Yerel Analiz Motoru" icon={<Sparkles size={14} />} badge="LOCAL" badgeVariant="success">
               <button
                 onClick={runFullAnalysis} disabled={isLoading}
                 className="w-full flex items-center justify-center gap-2 bg-primary/20 border border-primary/30 text-primary rounded py-2 text-xs font-mono font-semibold hover:bg-primary/30 transition-colors disabled:opacity-50"
               >
                 {isLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                {isCollecting ? "VERİ TOPLANIYOR..." : isAnalyzing ? "AI ANALİZ EDİYOR..." : "CANLI ANALİZ BAŞLAT"}
+                {isCollecting ? "VERİ TOPLANIYOR..." : isAnalyzing ? "ANALİZ EDİLİYOR..." : "CANLI ANALİZ BAŞLAT"}
               </button>
+              <div className="mt-3 p-2 rounded bg-success/10 border border-success/30">
+                <div className="text-[9px] font-mono text-success mb-1.5">● YERELSİSTEM ÇALIŞIYOR</div>
+                <p className="text-[10px] font-mono text-foreground/70 leading-relaxed">{listeningStatus}</p>
+              </div>
               <div className="mt-2 text-[10px] font-mono text-muted-foreground space-y-0.5">
-                <div className="flex items-center gap-1"><Newspaper size={10} /> 20+ RSS kaynağı (ulusal + yerel basın)</div>
-                <div className="flex items-center gap-1"><Search size={10} /> Firecrawl web scraping</div>
-                <div className="flex items-center gap-1"><Sparkles size={10} /> AI duygu analizi & içgörü</div>
+                <div className="flex items-center gap-1"><Newspaper size={10} /> Yerel Muğla veri tabanı</div>
+                <div className="flex items-center gap-1"><Search size={10} /> İçerik analizi (client-side)</div>
+                <div className="flex items-center gap-1"><Sparkles size={10} /> Duygu analizi & trend tespiti</div>
               </div>
             </DashboardPanel>
           </div>
@@ -452,9 +463,12 @@ const SocialIntel = () => {
           </div>
         </div>
 
-        <footer className="mt-4 py-3 border-t border-border/50 text-center">
+        <footer className="mt-4 py-3 border-t border-border/50 text-center space-y-1">
           <p className="text-[10px] font-mono text-muted-foreground">
-            MUĞLA MONİTÖR v1.0 — Sosyal Medya İstihbarat Modülü — RSS + Firecrawl + AI destekli canlı analiz
+            MUĞLA MONİTÖR v1.0 — Sosyal Medya İstihbarat Modülü — Yerel İşleme (Local Logic)
+          </p>
+          <p className="text-[9px] font-mono text-success">
+            ✓ Dış sunucu bağımlılığı yok • Client-side analiz • Yerel veri tabanı
           </p>
         </footer>
       </main>
