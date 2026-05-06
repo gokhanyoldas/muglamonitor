@@ -1,4 +1,10 @@
-project_id = "gsjypruivdsiufaeqtoc"
+project_id = "wivooargsmcwbiokpklu"
+
+[functions.data-scrape]
+verify_jwt = false
+
+[functions.reference-data]
+verify_jwt = false
 
 [functions.social-analyze]
 verify_jwt = false
