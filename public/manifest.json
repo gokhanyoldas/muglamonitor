@@ -1,0 +1,16 @@
+{
+  "name": "Muğla Monitör",
+  "short_name": "MuğlaMon",
+  "description": "Muğla ili bölgesel canlı veri monitörü",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}

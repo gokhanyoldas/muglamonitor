@@ -187,3 +187,32 @@
 .animate-slide-in {
   animation: slide-in-data 0.5s ease-out forwards;
 }
+
+/* Mobile-friendly scrollbar hide */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Touch-friendly tap targets */
+@media (max-width: 640px) {
+  button, a {
+    min-height: 32px;
+  }
+  
+  .grid {
+    gap: 0.5rem;
+  }
+}
+
+/* Safe area insets for notch phones */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+}
