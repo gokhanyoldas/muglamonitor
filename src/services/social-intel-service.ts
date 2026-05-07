@@ -321,6 +321,36 @@ class SocialIntelService {
       dataSource: "Google News RSS + Reddit + Ekşi Sözlük + HuggingFace AI",
     };
   }
+
+  // ─── Get trend data from DB ───
+  async getTrendData(periodType = "hourly", limit = 24) {
+    const { data, error } = await supabase
+      .from("social_trends")
+      .select("period_start, mention_count, positive_count, negative_count, neutral_count")
+      .eq("period_type", periodType)
+      .order("period_start", { ascending: false })
+      .limit(limit);
+    if (error) { console.error("Trend fetch error:", error); return []; }
+    return (data || []).reverse();
+  }
+
+  // ─── Get source reliability from DB ───
+  async getSourceReliability(limit = 15) {
+    const { data, error } = await supabase
+      .from("source_reliability")
+      .select("platform, source_name, total_posts, reliability_score")
+      .order("reliability_score", { ascending: false })
+      .limit(limit);
+    if (error) { console.error("Source reliability error:", error); return []; }
+    return data || [];
+  }
+
+  // ─── Trigger cron collection ───
+  async triggerCronCollection() {
+    const { data, error } = await supabase.functions.invoke("social-cron", { body: {} });
+    if (error) return { success: false };
+    return { success: true, collected: data?.collected, analyzed: data?.analyzed };
+  }
 }
 
 export const socialIntelService = new SocialIntelService();

@@ -1,8 +1,10 @@
 // supabase/functions/social-collect/index.ts
 // Collects social data from: Google News RSS, Reddit, Ekşi Sözlük
+// Persists to DB: social_posts, social_trends, source_reliability
 // No API keys needed - all free sources
 
 import { corsHeaders } from "../_shared/cors.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 interface CollectedPost {
   platform: string;
@@ -11,15 +13,33 @@ interface CollectedPost {
   url: string;
   published_at: string;
   keywords_matched: string[];
+  region?: string;
 }
 
 const DEFAULT_KEYWORDS = ["Muğla", "Bodrum", "Fethiye", "Marmaris", "Milas", "Datça", "Dalaman", "Menteşe", "Ortaca", "Seydikemer"];
 
+// Region detection
+const REGION_MAP: Record<string, string> = {
+  "bodrum": "Bodrum", "marmaris": "Marmaris", "fethiye": "Fethiye",
+  "datça": "Datça", "dalaman": "Dalaman", "milas": "Milas",
+  "köyceğiz": "Köyceğiz", "ortaca": "Ortaca", "menteşe": "Menteşe",
+  "yatağan": "Yatağan", "kavaklıdere": "Kavaklıdere", "seydikemer": "Seydikemer",
+  "ölüdeniz": "Fethiye", "göcek": "Dalaman", "turgutreis": "Bodrum",
+  "gümüşlük": "Bodrum", "hisarönü": "Fethiye", "dalyan": "Ortaca",
+  "akyaka": "Menteşe", "muğla": "Muğla Merkez",
+};
+
+function detectRegion(text: string): string | null {
+  const lower = text.toLowerCase();
+  for (const [key, region] of Object.entries(REGION_MAP)) {
+    if (lower.includes(key)) return region;
+  }
+  return null;
+}
+
 // ─── Google News RSS ───
 async function fetchGoogleNews(keywords: string[]): Promise<CollectedPost[]> {
   const posts: CollectedPost[] = [];
-  
-  // Fetch news for main keyword groups
   const queries = [
     keywords.slice(0, 3).join(" OR "),
     keywords.slice(3, 6).join(" OR "),
@@ -32,23 +52,17 @@ async function fetchGoogleNews(keywords: string[]): Promise<CollectedPost[]> {
         headers: { "User-Agent": "MuglaMonitor/1.0" },
         signal: AbortSignal.timeout(10000)
       });
-      
       if (!resp.ok) continue;
       const xml = await resp.text();
-      
-      // Parse RSS items
       const items = xml.match(/<item>([\s\S]*?)<\/item>/g) || [];
       
       for (const item of items.slice(0, 15)) {
-        const title = item.match(/<title>([\s\S]*?)<\/title>/)?.[1]?.replace(/<!\[CDATA\[(.*?)\]\]>/, "$1") || "";
+        const title = item.match(/<title>([\s\S]*?)<\/title>/)?.[1]?.replace(/&lt;!\[CDATA\[(.*?)\]\]&gt;|<!\[CDATA\[(.*?)\]\]>/g, "$1$2") || "";
         const link = item.match(/<link>([\s\S]*?)<\/link>/)?.[1] || "";
         const pubDate = item.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1] || "";
         const source = item.match(/<source[^>]*>([\s\S]*?)<\/source>/)?.[1]?.replace(/<!\[CDATA\[(.*?)\]\]>/, "$1") || "Google News";
         
-        const matchedKw = keywords.filter(kw => 
-          title.toLowerCase().includes(kw.toLowerCase())
-        );
-        
+        const matchedKw = keywords.filter(kw => title.toLowerCase().includes(kw.toLowerCase()));
         if (matchedKw.length > 0) {
           posts.push({
             platform: "news",
@@ -57,6 +71,7 @@ async function fetchGoogleNews(keywords: string[]): Promise<CollectedPost[]> {
             url: link.trim(),
             published_at: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
             keywords_matched: matchedKw,
+            region: detectRegion(title),
           });
         }
       }
@@ -64,14 +79,12 @@ async function fetchGoogleNews(keywords: string[]): Promise<CollectedPost[]> {
       console.error("Google News fetch error:", e);
     }
   }
-  
   return posts;
 }
 
 // ─── Reddit ───
 async function fetchReddit(keywords: string[]): Promise<CollectedPost[]> {
   const posts: CollectedPost[] = [];
-  
   const subreddits = ["Turkey", "turkiye"];
   const searchQuery = keywords.slice(0, 5).join(" OR ");
   
@@ -82,19 +95,15 @@ async function fetchReddit(keywords: string[]): Promise<CollectedPost[]> {
         headers: { "User-Agent": "MuglaMonitor/1.0 (Educational)" },
         signal: AbortSignal.timeout(10000)
       });
-      
       if (!resp.ok) continue;
       const data = await resp.json();
-      
       const children = data?.data?.children || [];
+      
       for (const child of children) {
         const post = child.data;
         if (!post) continue;
-        
         const text = `${post.title || ""} ${post.selftext || ""}`;
-        const matchedKw = keywords.filter(kw =>
-          text.toLowerCase().includes(kw.toLowerCase())
-        );
+        const matchedKw = keywords.filter(kw => text.toLowerCase().includes(kw.toLowerCase()));
         
         if (matchedKw.length > 0) {
           posts.push({
@@ -104,6 +113,7 @@ async function fetchReddit(keywords: string[]): Promise<CollectedPost[]> {
             url: `https://reddit.com${post.permalink || ""}`,
             published_at: new Date((post.created_utc || 0) * 1000).toISOString(),
             keywords_matched: matchedKw,
+            region: detectRegion(text),
           });
         }
       }
@@ -111,15 +121,12 @@ async function fetchReddit(keywords: string[]): Promise<CollectedPost[]> {
       console.error("Reddit fetch error:", e);
     }
   }
-  
   return posts;
 }
 
-// ─── Ekşi Sözlük (via public başlık pages) ───
+// ─── Ekşi Sözlük ───
 async function fetchEksiSozluk(keywords: string[]): Promise<CollectedPost[]> {
   const posts: CollectedPost[] = [];
-  
-  // Ekşi Sözlük topics related to Muğla
   const topics = ["mugla", "bodrum", "fethiye", "marmaris", "datca"];
   
   for (const topic of topics.slice(0, 3)) {
@@ -132,25 +139,17 @@ async function fetchEksiSozluk(keywords: string[]): Promise<CollectedPost[]> {
         },
         signal: AbortSignal.timeout(10000)
       });
-      
       if (!resp.ok) continue;
       const html = await resp.text();
-      
-      // Extract topic titles from HTML
       const titleMatches = html.match(/<a[^>]*href="\/([^"]+)"[^>]*>([^<]+)<\/a>/g) || [];
       
       for (const match of titleMatches.slice(0, 10)) {
         const hrefMatch = match.match(/href="\/([^"]+)"/);
         const textMatch = match.match(/>([^<]+)</);
-        
         if (hrefMatch && textMatch) {
           const title = textMatch[1].trim();
           const href = hrefMatch[1];
-          
-          const matchedKw = keywords.filter(kw =>
-            title.toLowerCase().includes(kw.toLowerCase())
-          );
-          
+          const matchedKw = keywords.filter(kw => title.toLowerCase().includes(kw.toLowerCase()));
           if (matchedKw.length > 0 && title.length > 5) {
             posts.push({
               platform: "eksisozluk",
@@ -159,6 +158,7 @@ async function fetchEksiSozluk(keywords: string[]): Promise<CollectedPost[]> {
               url: `https://eksisozluk1923.com/${href}`,
               published_at: new Date().toISOString(),
               keywords_matched: matchedKw,
+              region: detectRegion(title),
             });
           }
         }
@@ -167,8 +167,112 @@ async function fetchEksiSozluk(keywords: string[]): Promise<CollectedPost[]> {
       console.error("Ekşi Sözlük fetch error:", e);
     }
   }
-  
   return posts;
+}
+
+// ─── Persist to Database ───
+async function persistToDB(posts: CollectedPost[], keywords: string[]) {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !supabaseKey) return;
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  // 1. Insert posts (upsert via content_hash)
+  const postsToInsert = posts.map(p => ({
+    platform: p.platform,
+    content: p.content,
+    author: p.author,
+    url: p.url,
+    published_at: p.published_at,
+    keywords_matched: p.keywords_matched,
+    region: p.region || null,
+    collected_at: new Date().toISOString(),
+  }));
+
+  if (postsToInsert.length > 0) {
+    const { error } = await supabase
+      .from("social_posts")
+      .upsert(postsToInsert, { onConflict: "content_hash", ignoreDuplicates: true });
+    if (error) console.error("Posts insert error:", error.message);
+  }
+
+  // 2. Update source reliability
+  const sourceMap = new Map<string, { platform: string; count: number }>();
+  for (const p of posts) {
+    const key = `${p.platform}:${p.author}`;
+    if (!sourceMap.has(key)) sourceMap.set(key, { platform: p.platform, count: 0 });
+    sourceMap.get(key)!.count++;
+  }
+
+  for (const [key, value] of sourceMap) {
+    const source_name = key.split(":").slice(1).join(":");
+    // Upsert: increment total_posts, update last_seen
+    const { data: existing } = await supabase
+      .from("source_reliability")
+      .select("total_posts, reliability_score")
+      .eq("platform", value.platform)
+      .eq("source_name", source_name)
+      .single();
+
+    if (existing) {
+      const newTotal = existing.total_posts + value.count;
+      // Score increases with frequency (capped at 0.95)
+      const newScore = Math.min(0.95, existing.reliability_score + (value.count * 0.02));
+      await supabase
+        .from("source_reliability")
+        .update({ total_posts: newTotal, reliability_score: newScore, last_seen_at: new Date().toISOString() })
+        .eq("platform", value.platform)
+        .eq("source_name", source_name);
+    } else {
+      // Base score by platform
+      const baseScore: Record<string, number> = { news: 0.65, reddit: 0.45, eksisozluk: 0.40 };
+      await supabase
+        .from("source_reliability")
+        .insert({
+          platform: value.platform,
+          source_name,
+          total_posts: value.count,
+          reliability_score: baseScore[value.platform] || 0.5,
+          first_seen_at: new Date().toISOString(),
+          last_seen_at: new Date().toISOString(),
+        });
+    }
+  }
+
+  // 3. Create trend data point (hourly aggregate)
+  const now = new Date();
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0);
+  const periodEnd = new Date(periodStart.getTime() + 60 * 60 * 1000);
+
+  // Group by region
+  const regionGroups = new Map<string, { pos: number; neg: number; neu: number; total: number }>();
+  regionGroups.set("__all__", { pos: 0, neg: 0, neu: 0, total: posts.length });
+
+  for (const p of posts) {
+    const region = p.region || "__all__";
+    if (!regionGroups.has(region)) regionGroups.set(region, { pos: 0, neg: 0, neu: 0, total: 0 });
+    regionGroups.get(region)!.total++;
+  }
+
+  // Insert overall trend (sentiment will be updated after analysis)
+  await supabase.from("social_trends").insert({
+    period_start: periodStart.toISOString(),
+    period_end: periodEnd.toISOString(),
+    period_type: "hourly",
+    mention_count: posts.length,
+    top_keywords: keywords.slice(0, 5),
+    created_at: now.toISOString(),
+  });
+
+  // 4. Log collection run
+  await supabase.from("social_collection_runs").insert({
+    platforms_queried: [...new Set(posts.map(p => p.platform))],
+    keywords_used: keywords,
+    posts_collected: posts.length,
+    status: "completed",
+    completed_at: now.toISOString(),
+  });
 }
 
 // ─── Main Handler ───
@@ -185,15 +289,12 @@ Deno.serve(async (req: Request) => {
     const results: CollectedPost[] = [];
     const errors: string[] = [];
 
-    // Fetch in parallel
     const fetchers: Promise<CollectedPost[]>[] = [];
-    
     if (platforms.includes("news")) fetchers.push(fetchGoogleNews(keywords));
     if (platforms.includes("reddit")) fetchers.push(fetchReddit(keywords));
     if (platforms.includes("eksisozluk")) fetchers.push(fetchEksiSozluk(keywords));
 
     const allResults = await Promise.allSettled(fetchers);
-    
     for (const result of allResults) {
       if (result.status === "fulfilled") {
         results.push(...result.value);
@@ -202,8 +303,10 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Sort by date (newest first)
     results.sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime());
+
+    // Persist to DB (fire-and-forget, don't block response)
+    persistToDB(results, keywords).catch(e => console.error("Persist error:", e));
 
     return new Response(
       JSON.stringify({

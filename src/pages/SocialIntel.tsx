@@ -9,6 +9,7 @@ import {
   Loader2, ExternalLink
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { notificationService } from "@/services/notification-service";
 import { FilterPanel, SocialFilters } from "@/components/social/FilterPanel";
 import { KeywordManager } from "@/components/social/KeywordManager";
 import { TrendChart, generateTrendFromAnalyses } from "@/components/social/TrendChart";
@@ -16,6 +17,7 @@ import { SourceReliability, calculateReliability } from "@/components/social/Sou
 import { WeeklyComparison, generateComparisonData } from "@/components/social/WeeklyComparison";
 import { LiveFeedIndicator } from "@/components/social/LiveFeedIndicator";
 import { relativeTime, detectRegion } from "@/lib/time-utils";
+import { SocialRegionMap, generateRegionMapData } from "@/components/social/SocialRegionMap";
 
 type AnalysisItem = {
   platform: string;
@@ -87,6 +89,13 @@ const SocialIntel = () => {
           variant: "destructive",
         });
       }
+        // Send push notification for critical content
+        notificationService.sendAlert({
+          title: "⚠️ " + alert.label,
+          body: alert.value,
+          severity: "critical",
+          url: "/sosyal-istihbarat",
+        });
     } catch (e) {
       toast({ title: "Veri toplama hatası", variant: "destructive" });
     } finally {
@@ -96,6 +105,10 @@ const SocialIntel = () => {
 
   // Initial load
   useEffect(() => {
+  // Init notifications
+  useEffect(() => {
+    notificationService.init();
+  }, []);
     collectData();
   }, []);
 
@@ -136,6 +149,8 @@ const SocialIntel = () => {
     [analyses]
   );
 
+  // Region map data
+  const regionMapData = useMemo(() => generateRegionMapData(filtered), [filtered]);
   // Weekly comparison (simulated since we don't have historical data yet)
   const comparisonData = useMemo(() => {
     const currentByRegion: Record<string, { count: number; sentimentAvg: number }> = {};
@@ -312,6 +327,11 @@ const SocialIntel = () => {
             </DashboardPanel>
 
             {/* Source Reliability */}
+            {/* Region Map */}
+            <DashboardPanel title="📍 Bölge Haritası" subtitle="İlçe bazlı mention">
+              <SocialRegionMap data={regionMapData} />
+            </DashboardPanel>
+
             <DashboardPanel title="🛡️ Kaynak Güvenilirlik" subtitle="Puan tablosu">
               <SourceReliability sources={sourceReliability} />
             </DashboardPanel>
