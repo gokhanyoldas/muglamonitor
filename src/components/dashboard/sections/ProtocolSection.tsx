@@ -1,22 +1,42 @@
-import { useState, useMemo } from "react";
-import { Search, ChevronDown, ChevronUp, ExternalLink, Users } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Search, ChevronDown, ChevronUp, ExternalLink, Users, RefreshCw } from "lucide-react";
 import { PROTOCOL_DATA, type ProtocolMember } from "@/data/protocol-data";
+import { supabase } from "@/integrations/supabase/client";
 
 export const ProtocolSection = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set([""])); // "" = üst düzey default open
-  const [showAll, setShowAll] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set([""]));
+  const [fullData, setFullData] = useState<ProtocolMember[]>(PROTOCOL_DATA);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch full protocol from Edge Function on mount
+  useEffect(() => {
+    const fetchFull = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("protocol-scrape", { body: {} });
+        if (!error && data?.protocol && data.protocol.length > 0) {
+          setFullData(data.protocol);
+        }
+      } catch (e) {
+        console.error("Protocol fetch error:", e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchFull();
+  }, []);
 
   // Group by category
   const grouped = useMemo(() => {
     const map = new Map<string, ProtocolMember[]>();
-    for (const m of PROTOCOL_DATA) {
+    for (const m of fullData) {
       const key = m.kategori || "ÜST DÜZEY YÖNETİCİLER";
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(m);
     }
     return map;
-  }, []);
+  }, [fullData]);
 
   // Filter
   const filtered = useMemo(() => {
@@ -44,27 +64,19 @@ export const ProtocolSection = () => {
     });
   };
 
-  const expandAll = () => {
-    setExpandedCategories(new Set(filtered.keys()));
-    setShowAll(true);
-  };
-
-  const collapseAll = () => {
-    setExpandedCategories(new Set());
-    setShowAll(false);
-  };
+  const expandAll = () => setExpandedCategories(new Set(filtered.keys()));
+  const collapseAll = () => setExpandedCategories(new Set());
 
   const totalVisible = Array.from(filtered.values()).reduce((s, a) => s + a.length, 0);
 
   return (
     <div className="space-y-3">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Users className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-mono font-bold">İl Protokol Listesi</h3>
           <span className="text-[9px] font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
-            {totalVisible} / {PROTOCOL_DATA.length} kişi
+            {isLoading ? "..." : `${totalVisible} / ${fullData.length}`} kişi
           </span>
         </div>
         <a
@@ -74,11 +86,10 @@ export const ProtocolSection = () => {
           className="text-[9px] font-mono text-primary hover:underline flex items-center gap-1"
         >
           <ExternalLink className="w-3 h-3" />
-          Kaynak
+          mugla.gov.tr
         </a>
       </div>
 
-      {/* Search */}
       <div className="relative">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
         <input
@@ -90,24 +101,12 @@ export const ProtocolSection = () => {
         />
       </div>
 
-      {/* Expand/Collapse buttons */}
       <div className="flex gap-2">
-        <button
-          onClick={expandAll}
-          className="text-[9px] font-mono text-primary hover:underline"
-        >
-          Tümünü Aç
-        </button>
+        <button onClick={expandAll} className="text-[9px] font-mono text-primary hover:underline">Tümünü Aç</button>
         <span className="text-[9px] text-muted-foreground">|</span>
-        <button
-          onClick={collapseAll}
-          className="text-[9px] font-mono text-primary hover:underline"
-        >
-          Tümünü Kapat
-        </button>
+        <button onClick={collapseAll} className="text-[9px] font-mono text-primary hover:underline">Tümünü Kapat</button>
       </div>
 
-      {/* Categories */}
       <div className="space-y-1 max-h-[600px] overflow-y-auto scrollbar-thin">
         {Array.from(filtered.entries()).map(([category, members]) => {
           const isExpanded = expandedCategories.has(category) || searchTerm.trim().length > 0;
@@ -115,7 +114,6 @@ export const ProtocolSection = () => {
 
           return (
             <div key={category} className="border border-border/50 rounded-md overflow-hidden">
-              {/* Category header */}
               <button
                 onClick={() => toggleCategory(category)}
                 className="w-full flex items-center justify-between px-2.5 py-1.5 bg-muted/30 hover:bg-muted/50 transition-colors"
@@ -124,33 +122,19 @@ export const ProtocolSection = () => {
                   {displayCat}
                 </span>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="text-[9px] font-mono text-muted-foreground">
-                    {members.length}
-                  </span>
-                  {isExpanded ? (
-                    <ChevronUp className="w-3 h-3 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="w-3 h-3 text-muted-foreground" />
-                  )}
+                  <span className="text-[9px] font-mono text-muted-foreground">{members.length}</span>
+                  {isExpanded ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
                 </div>
               </button>
 
-              {/* Members list */}
               {isExpanded && (
                 <div className="divide-y divide-border/30">
                   {members.map((member, idx) => (
-                    <div
-                      key={`${member.isim}-${idx}`}
-                      className="px-2.5 py-1.5 hover:bg-muted/20 transition-colors"
-                    >
+                    <div key={`${member.isim}-${idx}`} className="px-2.5 py-1.5 hover:bg-muted/20 transition-colors">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <div className="text-[11px] font-mono font-medium text-foreground truncate">
-                            {member.isim}
-                          </div>
-                          <div className="text-[9px] font-mono text-muted-foreground truncate">
-                            {member.unvan}
-                          </div>
+                          <div className="text-[11px] font-mono font-medium text-foreground truncate">{member.isim}</div>
+                          <div className="text-[9px] font-mono text-muted-foreground truncate">{member.unvan}</div>
                         </div>
                         {member.telefon && (
                           <div className="text-[8px] font-mono text-muted-foreground/70 flex-shrink-0">

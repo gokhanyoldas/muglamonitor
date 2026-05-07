@@ -81,7 +81,6 @@ const SocialIntel = () => {
       setAnalyses(mapped);
       setLastUpdate(new Date());
 
-      // Show critical alerts
       const criticals = result.alerts.filter(a => a.severity === "critical");
       for (const alert of criticals) {
         toast({
@@ -89,14 +88,13 @@ const SocialIntel = () => {
           description: alert.value,
           variant: "destructive",
         });
-      }
-        // Send push notification for critical content
         notificationService.sendAlert({
           title: "⚠️ " + alert.label,
           body: alert.value,
           severity: "critical",
           url: "/sosyal-istihbarat",
         });
+      }
     } catch (e) {
       toast({ title: "Veri toplama hatası", variant: "destructive" });
     } finally {
