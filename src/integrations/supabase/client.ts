@@ -2,8 +2,29 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// Public Supabase project values (anon key is safe to expose in frontend, protected by RLS).
+// These constants act as a fallback so the app never fails to mount when .env is missing
+// (e.g. fresh clone, Bolt/WebContainer preview, or accidental .env deletion).
+const FALLBACK_SUPABASE_URL = 'https://wivooargsmcwbiokpklu.supabase.co';
+const FALLBACK_SUPABASE_PUBLISHABLE_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpdm9vYXJnc21jd2Jpb2twa2x1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNjgxMTEsImV4cCI6MjA5MzY0NDExMX0.9PweuSu2sc72kKKv2W_wVd7VCAic7QtI-QC-Z5zKa8g';
+
+const SUPABASE_URL =
+  (import.meta.env.VITE_SUPABASE_URL as string | undefined) || FALLBACK_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY =
+  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ||
+  FALLBACK_SUPABASE_PUBLISHABLE_KEY;
+
+if (
+  !import.meta.env.VITE_SUPABASE_URL ||
+  !import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    '[supabase] VITE_SUPABASE_URL veya VITE_SUPABASE_PUBLISHABLE_KEY .env içinde tanımlı değil. ' +
+      'Yedek (fallback) değerler kullanılıyor. Lütfen proje kökünde .env dosyasını oluşturun.'
+  );
+}
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
@@ -13,5 +34,5 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
-  }
+  },
 });
