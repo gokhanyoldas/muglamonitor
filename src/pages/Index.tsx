@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { DashboardHeader, type DashboardTab } from "@/components/dashboard/DashboardHeader";
 import { EconomySection } from "@/components/dashboard/sections/EconomySection";
 import { EnvironmentSection } from "@/components/dashboard/sections/EnvironmentSection";
@@ -33,6 +34,14 @@ const sectionComponents: Record<Exclude<DashboardTab, "genel">, React.FC[]> = {
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<DashboardTab>("genel");
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab && ["ekonomi","cevre","turizm","ulasim","sosyal","guvenlik","enerji","protokol"].includes(tab)) {
+      setActiveTab(tab as DashboardTab);
+    }
+  }, [searchParams]);
+  const [searchParams] = useSearchParams();
+
   const [liveStatuses, setLiveStatuses] = useState<Record<string, boolean>>({});
 
   // Live data hooks for top summary bar
@@ -92,7 +101,7 @@ const Index = () => {
 
         {/* Filtered or full grid */}
         {isGenel ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             <div className="space-y-3">
               <SmartCard category="economy">
                 <EconomySection />

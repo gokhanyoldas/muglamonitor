@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { socialIntelService } from "@/services/social-intel-service";
 import {
   Radio, TrendingUp, Hash, ArrowLeft, RefreshCw, Globe, Sparkles,
@@ -49,6 +49,7 @@ const platformIcons: Record<string, React.ReactNode> = {
 };
 
 const SocialIntel = () => {
+  const navigate = useNavigate();
   const [keywords, setKeywords] = useState<string[]>(["Muğla", "Bodrum", "Fethiye", "Marmaris"]);
   const [analyses, setAnalyses] = useState<AnalysisItem[]>([]);
   const [isCollecting, setIsCollecting] = useState(false);
@@ -177,7 +178,7 @@ const SocialIntel = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <DashboardHeader activeTab="sosyal" />
+      <DashboardHeader activeTab="sosyal" onTabChange={(tab) => navigate(tab === "sosyal" ? "/social-intel" : "/?tab=" + tab)} />
 
       <div className="p-3 sm:p-4 space-y-4">
         {/* Top bar */}
