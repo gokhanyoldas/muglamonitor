@@ -34,13 +34,13 @@ const sectionComponents: Record<Exclude<DashboardTab, "genel">, React.FC[]> = {
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<DashboardTab>("genel");
+  const [searchParams] = useSearchParams();
   useEffect(() => {
     const tab = searchParams.get("tab");
     if (tab && ["ekonomi","cevre","turizm","ulasim","sosyal","guvenlik","enerji","protokol"].includes(tab)) {
       setActiveTab(tab as DashboardTab);
     }
   }, [searchParams]);
-  const [searchParams] = useSearchParams();
 
   const [liveStatuses, setLiveStatuses] = useState<Record<string, boolean>>({});
 
