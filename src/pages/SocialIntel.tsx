@@ -102,12 +102,13 @@ const SocialIntel = () => {
     }
   }, [keywords, isCollecting, toast]);
 
-  // Initial load
-  useEffect(() => {
   // Init notifications
   useEffect(() => {
     notificationService.init();
   }, []);
+
+  // Initial load
+  useEffect(() => {
     collectData();
   }, []);
 
