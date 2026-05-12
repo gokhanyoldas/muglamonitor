@@ -66,12 +66,11 @@ const SocialIntel = () => {
 
   // Collect and analyze data
   const collectData = useCallback(async () => {
-    if (isCollecting) return;
-    const activeKeywords = keywords.length > 0 ? keywords : ["Muğla", "Bodrum", "Fethiye", "Marmaris"];
+    if (isCollecting || keywords.length === 0) return;
     setIsCollecting(true);
 
     try {
-      const result = await socialIntelService.collectAndAnalyze(activeKeywords, "all");
+      const result = await socialIntelService.collectAndAnalyze(keywords, "all");
 
       const mapped: AnalysisItem[] = result.analyses.map(a => ({
         ...a,
@@ -324,7 +323,7 @@ const SocialIntel = () => {
           <div className="space-y-4">
             {/* Keyword Manager */}
             <DashboardPanel title="🏷️ Anahtar Kelime Yönetimi" subtitle="Ekle/Kaldır">
-              <KeywordManager onKeywordsChange={(kws) => setKeywords(kws.length > 0 ? kws : ["Muğla", "Bodrum", "Fethiye", "Marmaris", "Datça", "Dalaman"])} />
+              <KeywordManager onKeywordsChange={(kws) => setKeywords(kws)} />
             </DashboardPanel>
 
             {/* Source Reliability */}
