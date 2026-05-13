@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { notificationService } from "@/services/notification-service";
 import { FilterPanel, SocialFilters } from "@/components/social/FilterPanel";
 import { KeywordManager } from "@/components/social/KeywordManager";
+import { NewsSourceManager } from "@/components/social/NewsSourceManager";
 import { TrendChart, generateTrendFromAnalyses } from "@/components/social/TrendChart";
 import { SourceReliability, calculateReliability } from "@/components/social/SourceReliability";
 import { WeeklyComparison, generateComparisonData } from "@/components/social/WeeklyComparison";
@@ -66,11 +67,12 @@ const SocialIntel = () => {
 
   // Collect and analyze data
   const collectData = useCallback(async () => {
-    if (isCollecting || keywords.length === 0) return;
+    if (isCollecting) return;
+    const activeKeywords = keywords.length > 0 ? keywords : ["Muğla", "Bodrum", "Fethiye", "Marmaris"];
     setIsCollecting(true);
 
     try {
-      const result = await socialIntelService.collectAndAnalyze(keywords, "all");
+      const result = await socialIntelService.collectAndAnalyze(activeKeywords, "all");
 
       const mapped: AnalysisItem[] = result.analyses.map(a => ({
         ...a,
@@ -323,7 +325,12 @@ const SocialIntel = () => {
           <div className="space-y-4">
             {/* Keyword Manager */}
             <DashboardPanel title="🏷️ Anahtar Kelime Yönetimi" subtitle="Ekle/Kaldır">
-              <KeywordManager onKeywordsChange={(kws) => setKeywords(kws)} />
+              <KeywordManager onKeywordsChange={(kws) => setKeywords(kws.length > 0 ? kws : ["Muğla", "Bodrum", "Fethiye", "Marmaris", "Datça", "Dalaman"])} />
+            </DashboardPanel>
+
+            {/* News Source Manager */}
+            <DashboardPanel title="📰 Yerel Haber Kaynakları" subtitle="Gazete & RSS takibi">
+              <NewsSourceManager />
             </DashboardPanel>
 
             {/* Source Reliability */}

@@ -171,6 +171,102 @@ async function fetchEksiSozluk(keywords: string[]): Promise<CollectedPost[]> {
 }
 
 // ─── Persist to Database ───
+
+// ─── Local News RSS Scraper ───
+async function fetchLocalNewsSources(supabase: any, keywords: string[]): Promise<CollectedPost[]> {
+  const posts: CollectedPost[] = [];
+
+  try {
+    // Load active sources with RSS feeds from DB
+    const { data: sources } = await supabase
+      .from("news_sources")
+      .select("name, url, rss_url, region")
+      .eq("is_active", true)
+      .not("rss_url", "is", null);
+
+    if (!sources || sources.length === 0) return posts;
+
+    for (const src of sources) {
+      try {
+        const resp = await fetch(src.rss_url, {
+          headers: { "User-Agent": "MuglaMonitor/1.0 RSS Reader" },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!resp.ok) continue;
+        const xml = await resp.text();
+        const items = xml.match(/<item>([\s\S]*?)<\/item>/g) || [];
+
+        for (const item of items.slice(0, 20)) {
+          const rawTitle = item.match(/<title>([\s\S]*?)<\/title>/)?.[1] || "";
+          const title = rawTitle.replace(/<!\[CDATA\[(.*)\]\]>/g, "$1").replace(/&amp;/g, "&").trim();
+          const rawLink = item.match(/<link>([\s\S]*?)<\/link>/)?.[1] ||
+                          item.match(/<link[^>]*href="([^"]+)"/)?.[1] || "";
+          const link = rawLink.replace(/<!\[CDATA\[(.*)\]\]>/g, "$1").trim();
+          const pubDate = item.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1] || "";
+          const descRaw = item.match(/<description>([\s\S]*?)<\/description>/)?.[1] || "";
+          const description = descRaw.replace(/<[^>]+>/g, "").replace(/<!\[CDATA\[(.*)\]\]>/g, "$1").slice(0, 300).trim();
+
+          const text = `${title} ${description}`;
+          const matchedKw = keywords.filter(kw => text.toLowerCase().includes(kw.toLowerCase()));
+          if (matchedKw.length === 0 || title.length < 5) continue;
+
+          posts.push({
+            platform: `news_rss:${src.name.toLowerCase().replace(/\s+/g, "_")}`,
+            content: description || title,
+            author: src.name,
+            url: link,
+            published_at: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
+            keywords_matched: matchedKw,
+            region: src.region || detectRegion(text),
+          });
+        }
+      } catch (e) {
+        console.error(`RSS fetch error for ${src.name}:`, e);
+      }
+    }
+  } catch (e) {
+    console.error("fetchLocalNewsSources error:", e);
+  }
+
+  return posts;
+}
+
+// ─── Email Alerts Processor ───
+async function processEmailAlerts(supabase: any, keywords: string[]): Promise<CollectedPost[]> {
+  const posts: CollectedPost[] = [];
+  try {
+    const { data: alerts } = await supabase
+      .from("email_alerts")
+      .select("*")
+      .eq("processed", false)
+      .order("email_received_at", { ascending: false })
+      .limit(50);
+
+    if (!alerts || alerts.length === 0) return posts;
+
+    for (const alert of alerts) {
+      const text = `${alert.article_title || ""} ${alert.article_snippet || ""}`;
+      const matchedKw = keywords.filter(kw => text.toLowerCase().includes(kw.toLowerCase()));
+
+      posts.push({
+        platform: alert.source || "email_alerts",
+        content: alert.article_snippet || alert.article_title,
+        author: alert.source_domain || alert.source,
+        url: alert.article_url || "",
+        published_at: alert.published_at || alert.email_received_at,
+        keywords_matched: matchedKw.length > 0 ? matchedKw : [alert.alert_keyword || ""],
+        region: detectRegion(text),
+      });
+
+      // Mark as processed
+      await supabase.from("email_alerts").update({ processed: true }).eq("id", alert.id);
+    }
+  } catch (e) {
+    console.error("processEmailAlerts error:", e);
+  }
+  return posts;
+}
+
 async function persistToDB(posts: CollectedPost[], keywords: string[]) {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -289,10 +385,17 @@ Deno.serve(async (req: Request) => {
     const results: CollectedPost[] = [];
     const errors: string[] = [];
 
+    // Create supabase client for DB-sourced scrapers
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     const fetchers: Promise<CollectedPost[]>[] = [];
     if (platforms.includes("news")) fetchers.push(fetchGoogleNews(keywords));
     if (platforms.includes("reddit")) fetchers.push(fetchReddit(keywords));
     if (platforms.includes("eksisozluk")) fetchers.push(fetchEksiSozluk(keywords));
+    if (platforms.includes("local_rss") || !platforms.length) fetchers.push(fetchLocalNewsSources(supabase, keywords));
+    if (platforms.includes("email_alerts")) fetchers.push(processEmailAlerts(supabase, keywords));
 
     const allResults = await Promise.allSettled(fetchers);
     for (const result of allResults) {
