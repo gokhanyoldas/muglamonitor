@@ -3,10 +3,11 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel";
 import { Link, useNavigate } from "react-router-dom";
 import { socialIntelService } from "@/services/social-intel-service";
+import { OSINTCenter } from "@/components/social/OSINTCenter";
 import {
   Radio, TrendingUp, Hash, ArrowLeft, RefreshCw, Globe, Sparkles,
   BarChart3, AlertTriangle, Newspaper, MapPin, Shield, Calendar,
-  Loader2, ExternalLink
+  Loader2, ExternalLink, Eye
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { notificationService } from "@/services/notification-service";
@@ -51,6 +52,7 @@ const platformIcons: Record<string, React.ReactNode> = {
 
 const SocialIntel = () => {
   const navigate = useNavigate();
+  const [activeSection, setActiveSection] = useState<"feed" | "osint">("feed");
   const [keywords, setKeywords] = useState<string[]>(["Muğla", "Bodrum", "Fethiye", "Marmaris"]);
   const [analyses, setAnalyses] = useState<AnalysisItem[]>([]);
   const [isCollecting, setIsCollecting] = useState(false);
@@ -199,6 +201,30 @@ const SocialIntel = () => {
             </div>
           </div>
 
+          {/* Section toggle */}
+          <div className="flex items-center gap-1.5 mr-2">
+            <button
+              onClick={() => setActiveSection("feed")}
+              className={`flex items-center gap-1.5 text-[9px] font-mono px-2.5 py-1.5 rounded border transition-colors ${
+                activeSection === "feed"
+                  ? "bg-primary/20 text-primary border-primary/40"
+                  : "text-muted-foreground border-border hover:text-foreground"
+              }`}
+            >
+              <Radio size={11} />Sosyal Akış
+            </button>
+            <button
+              onClick={() => setActiveSection("osint")}
+              className={`flex items-center gap-1.5 text-[9px] font-mono px-2.5 py-1.5 rounded border transition-colors ${
+                activeSection === "osint"
+                  ? "bg-cyan-600/20 text-cyan-300 border-cyan-500/40"
+                  : "text-muted-foreground border-border hover:text-foreground"
+              }`}
+            >
+              <Eye size={11} />OSINT Merkezi
+            </button>
+          </div>
+
           <div className="flex items-center gap-2">
             <LiveFeedIndicator lastUpdate={lastUpdate} itemCount={analyses.length} isCollecting={isCollecting} />
             <button
@@ -221,6 +247,13 @@ const SocialIntel = () => {
             </button>
           </div>
         </div>
+
+        {activeSection === "osint" && (
+          <OSINTCenter />
+        )}
+
+        {activeSection === "feed" && (
+          <>
 
         {/* Quick stats */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -385,6 +418,9 @@ const SocialIntel = () => {
             </DashboardPanel>
           </div>
         </div>
+          </>
+        )}
+
       </div>
     </div>
   );
