@@ -275,16 +275,49 @@ async function persistToDB(posts: CollectedPost[], keywords: string[]) {
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   // 1. Insert posts (upsert via content_hash)
-  const postsToInsert = posts.map(p => ({
-    platform: p.platform,
-    content: p.content,
-    author: p.author,
-    url: p.url,
-    published_at: p.published_at,
-    keywords_matched: p.keywords_matched,
-    region: p.region || null,
-    collected_at: new Date().toISOString(),
-  }));
+  // ── Inline keyword sentiment analysis (no API needed) ──────────────────────
+  const NEGATIVE_KW = [
+    "ölü","ölüm","hayatını kaybetti","can kaybı","yaralı","kaza",
+    "yangın","yanıyor","sel","deprem","sarsıntı","patlama",
+    "bomba","saldırı","çöktü","yıkıldı","feci",
+    "çöp","kirlilik","duman","rezalet","skandal","yolsuzluk","usulsüz","kaçak",
+    "sorun","problem","hata","tepki yağdı","şok","endişe",
+    "itiraz","grev","protesto","eleştiri","kriz",
+  ];
+  const POSITIVE_KW = [
+    "yatırım","tamamlandı","açıldı","başarı","ödül","ihracat",
+    "büyüme","kalkınma","gelişme","rekor","artış",
+    "turizm","festival","etkinlik","ziyaretçi","güzel","mükemmel",
+    "şampiyon","final","zafer","gol","kazandı",
+    "işbirliği","proje","imzalandı","katkı","destek",
+  ];
+
+  function analyzeSentiment(text: string): { sentiment: string; confidence: number } {
+    const lower = text.toLowerCase();
+    const negHits = NEGATIVE_KW.filter(kw => lower.includes(kw)).length;
+    const posHits = POSITIVE_KW.filter(kw => lower.includes(kw)).length;
+    if (negHits > posHits) return { sentiment: "negative", confidence: Math.min(0.5 + negHits * 0.12, 0.95) };
+    if (posHits > negHits) return { sentiment: "positive", confidence: Math.min(0.5 + posHits * 0.12, 0.95) };
+    return { sentiment: "neutral", confidence: 0.55 };
+  }
+
+  const postsToInsert = posts.map(p => {
+    const { sentiment, confidence } = analyzeSentiment(p.content);
+    return {
+      platform: p.platform,
+      content: p.content,
+      author: p.author,
+      url: p.url,
+      published_at: p.published_at,
+      keywords_matched: p.keywords_matched,
+      region: p.region || null,
+      collected_at: new Date().toISOString(),
+      sentiment,
+      sentiment_confidence: confidence,
+      sentiment_method: "keyword",
+      analyzed_at: new Date().toISOString(),
+    };
+  });
 
   if (postsToInsert.length > 0) {
     const { error } = await supabase
