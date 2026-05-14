@@ -68,45 +68,6 @@ const SocialIntel = () => {
   });
   const { toast } = useToast();
 
-  // Collect and analyze data
-  const collectData = useCallback(async () => {
-    if (isCollecting) return;
-    const activeKeywords = keywords.length > 0 ? keywords : ["Muğla", "Bodrum", "Fethiye", "Marmaris"];
-    setIsCollecting(true);
-
-    try {
-      const result = await socialIntelService.collectAndAnalyze(activeKeywords, "all");
-
-      const mapped: AnalysisItem[] = result.analyses.map(a => ({
-        ...a,
-        region: detectRegion(a.content) || undefined,
-        collected_at: new Date().toISOString(),
-      }));
-
-      setAnalyses(mapped);
-      setLastUpdate(new Date());
-
-      const criticals = result.alerts.filter(a => a.severity === "critical");
-      for (const alert of criticals) {
-        toast({
-          title: "⚠️ " + alert.label,
-          description: alert.value,
-          variant: "destructive",
-        });
-        notificationService.sendAlert({
-          title: "⚠️ " + alert.label,
-          body: alert.value,
-          severity: "critical",
-          url: "/sosyal-istihbarat",
-        });
-      }
-    } catch (e) {
-      toast({ title: "Veri toplama hatası", variant: "destructive" });
-    } finally {
-      setIsCollecting(false);
-    }
-  }, [keywords, isCollecting, toast]);
-
   // Map social_posts row → AnalysisItem
   const mapPostToItem = useCallback((p: Record<string, unknown>): AnalysisItem => ({
     platform: p.platform as string,
@@ -139,14 +100,54 @@ const SocialIntel = () => {
     }
   }, [mapPostToItem]);
 
+  // Collect and analyze data
+  const collectData = useCallback(async () => {
+    if (isCollecting) return;
+    const activeKeywords = keywords.length > 0 ? keywords : ["Muğla", "Bodrum", "Fethiye", "Marmaris"];
+    setIsCollecting(true);
+
+    try {
+      // Collect new posts (inserts to DB via social-collect Edge Function)
+      const result = await socialIntelService.collectAndAnalyze(activeKeywords, "all");
+
+      // After collection completes, reload ALL posts from DB (historical + new batch).
+      // This avoids replacing the full history with only the just-collected slice.
+      await loadFromDB();
+      setLastUpdate(new Date());
+
+      // Surface critical alerts
+      const criticals = result.alerts.filter(a => a.severity === "critical");
+      for (const alert of criticals) {
+        toast({
+          title: "⚠️ " + alert.label,
+          description: alert.value,
+          variant: "destructive",
+        });
+        notificationService.sendAlert({
+          title: "⚠️ " + alert.label,
+          body: alert.value,
+          severity: "critical",
+          url: "/sosyal-istihbarat",
+        });
+      }
+    } catch (e) {
+      toast({ title: "Veri toplama hatası", variant: "destructive" });
+    } finally {
+      setIsCollecting(false);
+    }
+  }, [keywords, isCollecting, toast, loadFromDB]);
+
+
   // Init notifications
   useEffect(() => {
     notificationService.init();
   }, []);
 
-  // Initial load: fetch existing DB rows first (instant display), then run collector
+  // Initial load: fetch existing DB rows from social_posts (instant display).
+  // collectData() is only called manually or via auto-refresh — NOT on mount —
+  // to prevent it from overwriting the historical posts with only the latest batch.
   useEffect(() => {
-    loadFromDB().then(() => collectData());
+    loadFromDB();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
