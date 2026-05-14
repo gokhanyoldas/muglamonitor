@@ -105,6 +105,42 @@ async function checkHackerNews(username: string): Promise<"found" | "not_found" 
   } catch { return "error"; }
 }
 
+
+// ─── Nitter failover list + checker ──────────────────────────────────────────
+// Multiple public Nitter instances — if one is down the next is tried automatically
+
+const NITTER_INSTANCES = [
+  "https://nitter.poast.org",
+  "https://nitter.privacydev.net",
+  "https://nitter.1d4.us",
+  "https://nitter.kavin.rocks",
+  "https://nitter.unixfox.eu",
+  "https://twiiit.com",
+  "https://nitter.moomoo.me",
+];
+
+async function checkNitterWithFailover(username: string): Promise<"found" | "not_found" | "error"> {
+  const path = `/${encodeURIComponent(username)}`;
+  for (const instance of NITTER_INSTANCES) {
+    try {
+      const r = await fetch(`${instance}${path}`, {
+        method: "HEAD",
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; MuglaMonitor-OSINT/1.0)" },
+        redirect: "follow",
+        signal: AbortSignal.timeout(5000),
+      });
+      if (r.status === 200)  return "found";
+      if (r.status === 404)  return "not_found";
+      // Non-200/404 (e.g. 502, 503) → try next instance
+      continue;
+    } catch {
+      // Timeout / network error → try next instance
+      continue;
+    }
+  }
+  return "error"; // all instances exhausted
+}
+
 async function checkHead(url: string): Promise<"found" | "not_found" | "error"> {
   try {
     const r = await fetch(url, {

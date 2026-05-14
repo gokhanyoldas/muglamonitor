@@ -15,7 +15,7 @@ import {
   Search, Eye, MapPin, Clock, ExternalLink, Loader2,
   AlertCircle, CheckCircle2, XCircle, HelpCircle,
   Trash2, RefreshCw, User, Globe, Shield, Radio,
-  ChevronDown, ChevronUp, Terminal,
+  ChevronDown, ChevronUp, Terminal, Flame, Camera, Zap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -495,15 +495,244 @@ function SearchHistory() {
   );
 }
 
+
+// ─── Crisis Image Intel Panel ─────────────────────────────────────────────────
+// No API key required: keyword scan on post content for crisis signals.
+// Extracts image URLs from content where present; flags all crisis posts.
+
+const CRISIS_KW = [
+  "yangın", "yanıyor", "alev", "ateş",
+  "kaza", "çarpışma",
+  "duman", "boğuluyor",
+  "sel", "taşkın",
+  "deprem", "sarsıntı",
+  "patlama", "bomba",
+  "ölü", "yaralı", "ölüm",
+  "acil", "ambulans", "itfaiye", "kurtarma",
+  "kalabalık", "izdiham",
+];
+
+const CRISIS_LABELS: Record<string, string> = {
+  yangın: "🔥 Yangın", yanıyor: "🔥 Yangın", alev: "🔥 Yangın", ateş: "🔥 Yangın",
+  kaza: "💥 Kaza", çarpışma: "💥 Kaza",
+  duman: "💨 Duman", boğuluyor: "💨 Duman",
+  sel: "🌊 Sel", taşkın: "🌊 Sel",
+  deprem: "🌍 Deprem", sarsıntı: "🌍 Deprem",
+  patlama: "💣 Patlama", bomba: "💣 Patlama",
+  ölü: "☠️ Kayıp", yaralı: "🩺 Yaralı", ölüm: "☠️ Kayıp",
+  acil: "🚨 Acil", ambulans: "🚑 Ambulans", itfaiye: "🚒 İtfaiye", kurtarma: "⛑️ Kurtarma",
+  kalabalık: "👥 Kalabalık", izdiham: "👥 İzdiham",
+};
+
+function detectCrisisLabels(content: string): string[] {
+  const lower = content.toLowerCase();
+  const found = new Set<string>();
+  for (const kw of CRISIS_KW) {
+    if (lower.includes(kw) && CRISIS_LABELS[kw]) found.add(CRISIS_LABELS[kw]);
+  }
+  return Array.from(found);
+}
+
+function extractImageUrls(content: string): string[] {
+  const urls: string[] = [];
+  // Markdown images: ![alt](url)
+  const mdImages = content.matchAll(/!\[.*?\]\((https?:\/\/[^)]+\.(?:jpg|jpeg|png|gif|webp)[^)]*)\)/gi);
+  for (const m of mdImages) urls.push(m[1]);
+  // Plain http image links
+  const plainImages = content.matchAll(/https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s"'<>]*)?/gi);
+  for (const m of plainImages) if (!urls.includes(m[0])) urls.push(m[0]);
+  return urls.slice(0, 2);
+}
+
+interface CrisisPost {
+  id?: string;
+  platform: string;
+  content: string;
+  author?: string | null;
+  url?: string | null;
+  published_at?: string | null;
+  crisis_labels: string[];
+  image_urls: string[];
+}
+
+function ImageIntel() {
+  const [posts, setPosts]     = useState<CrisisPost[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [total, setTotal]     = useState(0);
+
+  const loadCrisisPosts = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Build OR filter for crisis keywords
+      const kws = ["yangın", "kaza", "deprem", "sel", "patlama", "duman", "ölü", "yaralı", "acil", "itfaiye"];
+      const orFilter = kws.map(kw => `content.ilike.%${kw}%`).join(",");
+
+      const { data, error } = await supabase
+        .from("social_posts")
+        .select("id,platform,content,author,url,published_at")
+        .or(orFilter)
+        .order("published_at", { ascending: false })
+        .limit(30);
+
+      if (error) throw error;
+
+      const mapped: CrisisPost[] = (data ?? []).map((p: Record<string, unknown>) => ({
+        id: p.id as string,
+        platform: p.platform as string,
+        content: p.content as string,
+        author: p.author as string | null,
+        url: p.url as string | null,
+        published_at: p.published_at as string | null,
+        crisis_labels: detectCrisisLabels(p.content as string),
+        image_urls: extractImageUrls(p.content as string),
+      }));
+
+      setPosts(mapped);
+      setTotal(mapped.length);
+    } catch {
+      setPosts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCrisisPosts();
+
+    // Real-time subscription for new crisis posts
+    const channel = supabase
+      .channel("crisis_intel_live")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "social_posts" }, (payload) => {
+        const p = payload.new as Record<string, unknown>;
+        const labels = detectCrisisLabels(p.content as string);
+        if (labels.length === 0) return; // not a crisis post
+        setPosts(prev => [{
+          id: p.id as string,
+          platform: p.platform as string,
+          content: p.content as string,
+          author: p.author as string | null,
+          url: p.url as string | null,
+          published_at: p.published_at as string | null,
+          crisis_labels: labels,
+          image_urls: extractImageUrls(p.content as string),
+        }, ...prev.slice(0, 29)]);
+        setTotal(t => t + 1);
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [loadCrisisPosts]);
+
+  return (
+    <div className="relative rounded-lg border border-red-500/20 bg-slate-950/80 p-4 overflow-hidden">
+      <ScanLine />
+      <TerminalHeader
+        title="[GÖRSEL & İÇERİK İSTİHBARATI]"
+        subtitle="Kriz anahtar kelime tarama — API gerektirmez — gerçek zamanlı"
+      />
+
+      {/* Stats row */}
+      <div className="flex items-center gap-3 mb-3 px-2 py-1.5 rounded bg-slate-900/50 border border-red-800/30">
+        <Flame className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+        <span className="text-[9px] font-mono text-red-300">
+          <span className="font-bold text-white">{total}</span> KRİZ İÇERİĞİ TESPİT EDİLDİ
+        </span>
+        <button onClick={loadCrisisPosts} className="ml-auto text-[9px] font-mono text-slate-500 hover:text-slate-300 flex items-center gap-1">
+          <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
+        </button>
+        <span className="flex items-center gap-1 text-[9px] font-mono text-emerald-400">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />CANLI
+        </span>
+      </div>
+
+      {posts.length === 0 && !loading ? (
+        <div className="text-center py-8">
+          <Camera className="w-8 h-8 text-slate-700 mx-auto mb-2" />
+          <p className="text-[10px] font-mono text-slate-600">Kriz anahtar kelimesi içeren gönderi bulunamadı</p>
+          <p className="text-[9px] font-mono text-slate-700 mt-1">yangın · kaza · deprem · sel · patlama · duman</p>
+        </div>
+      ) : (
+        <ScrollArea className="h-80">
+          <div className="space-y-2 pr-2">
+            {posts.map((p, idx) => (
+              <div key={p.id ?? idx}
+                className="rounded border border-red-900/40 bg-red-950/10 hover:bg-red-950/20 transition-colors p-2.5 group">
+                {/* Header */}
+                <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <div className="flex flex-wrap gap-1">
+                    {p.crisis_labels.map(label => (
+                      <span key={label} className="text-[9px] font-mono px-1.5 py-0.5 rounded border border-red-500/40 bg-red-500/15 text-red-300 font-bold">
+                        {label}
+                      </span>
+                    ))}
+                    <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${PLATFORM_COLORS[p.platform] ?? "bg-slate-500/20 text-slate-300"}`}>
+                      {p.platform}
+                    </span>
+                  </div>
+                  <span className="text-[9px] font-mono text-slate-600 flex-shrink-0">
+                    <Clock className="w-2.5 h-2.5 inline-block mr-0.5" />
+                    {p.published_at ? relativeTime(new Date(p.published_at)) : "?"}
+                  </span>
+                </div>
+
+                {/* Content */}
+                <p className="text-[10px] font-mono text-slate-200 line-clamp-3 leading-relaxed mb-1.5">
+                  {p.content}
+                </p>
+
+                {/* Extracted images */}
+                {p.image_urls.length > 0 && (
+                  <div className="flex gap-2 mb-1.5">
+                    {p.image_urls.map((imgUrl, i) => (
+                      <a key={i} href={imgUrl} target="_blank" rel="noopener noreferrer"
+                        className="relative group/img">
+                        <img src={imgUrl} alt="crisis" loading="lazy"
+                          className="h-16 w-24 object-cover rounded border border-red-500/30 opacity-80 group-hover/img:opacity-100 transition-opacity" />
+                        <span className="absolute top-1 left-1 text-[8px] font-mono bg-red-900/80 text-red-300 px-1 rounded">
+                          ⚠ KRİZ
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                )}
+
+                {/* Severity bar */}
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-0.5 flex-1">
+                    {Array.from({ length: Math.min(p.crisis_labels.length, 5) }).map((_, i) => (
+                      <div key={i} className="h-1 rounded-full bg-red-500/60 flex-1" />
+                    ))}
+                    {Array.from({ length: Math.max(0, 5 - p.crisis_labels.length) }).map((_, i) => (
+                      <div key={i} className="h-1 rounded-full bg-slate-700 flex-1" />
+                    ))}
+                  </div>
+                  <span className="text-[8px] font-mono text-red-400">SEVİYE {p.crisis_labels.length}/5</span>
+                  {p.url && p.url !== "#" && (
+                    <a href={p.url} target="_blank" rel="noopener noreferrer"
+                      className="text-[9px] font-mono text-cyan-600 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
 export function OSINTCenter() {
-  const [activePanel, setActivePanel] = useState<"username" | "geo" | "history">("username");
+  const [activePanel, setActivePanel] = useState<"username" | "geo" | "history" | "crisis">("username");
 
   const panels = [
     { id: "username" as const, label: "Kullanıcı Tarama",  icon: <User className="w-3.5 h-3.5" />,   color: "cyan" },
     { id: "geo"      as const, label: "Coğrafi İzleme",    icon: <MapPin className="w-3.5 h-3.5" />, color: "purple" },
     { id: "history"  as const, label: "Geçmiş Aramalar",   icon: <Clock className="w-3.5 h-3.5" />,  color: "slate" },
+    { id: "crisis"   as const, label: "Kriz İstihbaratı",   icon: <Flame className="w-3.5 h-3.5" />,  color: "red" },
   ];
 
   return (
@@ -537,6 +766,7 @@ export function OSINTCenter() {
               activePanel === p.id
                 ? p.color === "cyan"   ? "bg-cyan-600/20 text-cyan-300 border-cyan-500/40"
                 : p.color === "purple" ? "bg-purple-600/20 text-purple-300 border-purple-500/40"
+                : p.color === "red"    ? "bg-red-600/20 text-red-300 border-red-500/40"
                 :                        "bg-slate-600/20 text-slate-300 border-slate-500/40"
                 : "bg-slate-900 text-slate-500 border-slate-800 hover:text-slate-300"
             }`}
@@ -550,6 +780,7 @@ export function OSINTCenter() {
       {activePanel === "username" && <UsernameLookup />}
       {activePanel === "geo"      && <GeoMonitor />}
       {activePanel === "history"  && <SearchHistory />}
+      {activePanel === "crisis"   && <ImageIntel />}
     </div>
   );
 }

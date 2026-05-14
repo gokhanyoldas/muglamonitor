@@ -20,6 +20,7 @@ import { WeeklyComparison, generateComparisonData } from "@/components/social/We
 import { LiveFeedIndicator } from "@/components/social/LiveFeedIndicator";
 import { relativeTime, detectRegion } from "@/lib/time-utils";
 import { SocialRegionMap, generateRegionMapData } from "@/components/social/SocialRegionMap";
+import { supabase } from "@/integrations/supabase/client";
 
 type AnalysisItem = {
   platform: string;
@@ -106,15 +107,65 @@ const SocialIntel = () => {
     }
   }, [keywords, isCollecting, toast]);
 
+  // Map social_posts row → AnalysisItem
+  const mapPostToItem = useCallback((p: Record<string, unknown>): AnalysisItem => ({
+    platform: p.platform as string,
+    content: p.content as string,
+    sentiment: (p.sentiment as string) || "neutral",
+    sentiment_score: (p.sentiment_confidence as number) || 0,
+    source_author: (p.author as string) || "",
+    engagement_count: 0,
+    summary: undefined,
+    source_url: (p.url as string) || undefined,
+    region: detectRegion(p.content as string) || (p.region as string) || undefined,
+    collected_at: (p.published_at as string) || (p.collected_at as string) || undefined,
+  }), []);
+
+  // Load existing posts directly from social_posts table
+  const loadFromDB = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("social_posts")
+        .select("id,platform,content,author,url,published_at,collected_at,sentiment,sentiment_confidence,keywords_matched")
+        .order("published_at", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      if (data && data.length > 0) {
+        setAnalyses(data.map(mapPostToItem));
+        setLastUpdate(new Date());
+      }
+    } catch (e) {
+      // silently fall through — collectData will be called too
+    }
+  }, [mapPostToItem]);
+
   // Init notifications
   useEffect(() => {
     notificationService.init();
   }, []);
 
-  // Initial load
+  // Initial load: fetch existing DB rows first (instant display), then run collector
   useEffect(() => {
-    collectData();
+    loadFromDB().then(() => collectData());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Real-time subscription — new posts appear without refresh
+  useEffect(() => {
+    const channel = supabase
+      .channel("social_posts_live")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "social_posts" },
+        (payload) => {
+          const newPost = payload.new as Record<string, unknown>;
+          setAnalyses((prev) => [mapPostToItem(newPost), ...prev]);
+          setLastUpdate(new Date());
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [mapPostToItem]);
 
   // Auto-refresh
   useEffect(() => {
