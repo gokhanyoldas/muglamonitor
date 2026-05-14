@@ -231,6 +231,105 @@ async function fetchLocalNewsSources(supabase: any, keywords: string[]): Promise
   return posts;
 }
 
+// ─── Monitored Accounts Fetcher ───
+// Collects public posts from user-configured social media usernames.
+// Twitter: via Nitter (no auth needed)  |  YouTube: via RSS feed
+async function fetchMonitoredAccounts(supabase: any, keywords: string[]): Promise<CollectedPost[]> {
+  const posts: CollectedPost[] = [];
+  try {
+    const { data: accounts } = await supabase
+      .from("monitored_accounts")
+      .select("*")
+      .eq("is_active", true);
+    if (!accounts || accounts.length === 0) return posts;
+
+    const kw = keywords.map((k: string) => k.toLowerCase());
+
+    for (const account of accounts) {
+      try {
+        if (account.platform === "twitter") {
+          // Use Nitter to fetch public tweets without authentication
+          const NITTER_INSTANCES = [
+            "nitter.net", "nitter.privacydev.net", "nitter.poast.org",
+            "nitter.moomoo.me", "nitter.pussthecat.org",
+          ];
+          for (const instance of NITTER_INSTANCES) {
+            try {
+              const url = `https://${instance}/${account.username}/rss`;
+              const resp = await fetch(url, {
+                headers: { "User-Agent": "MuglaMonitor/1.0 RSS" },
+                signal: AbortSignal.timeout(8000),
+              });
+              if (!resp.ok) continue;
+              const xml = await resp.text();
+              const items = xml.match(/<item>([\s\S]*?)<\/item>/g) || [];
+              for (const item of items.slice(0, 10)) {
+                const title    = item.match(/<title><![CDATA[(.*?)]]><\/title>/)?.[1] || item.match(/<title>(.*?)<\/title>/)?.[1] || "";
+                const desc     = item.match(/<description><![CDATA[(.*?)]]><\/description>/)?.[1] || item.match(/<description>(.*?)<\/description>/)?.[1] || "";
+                const link     = item.match(/<link>(.*?)<\/link>/)?.[1] || "";
+                const pubDate  = item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || "";
+                const text     = title + " " + desc;
+                const textLow  = text.toLowerCase();
+                const matched  = kw.filter((k: string) => textLow.includes(k));
+                if (matched.length === 0) continue;
+                posts.push({
+                  platform: "twitter",
+                  content: text.slice(0, 500),
+                  source_url: link,
+                  source_author: account.display_name || account.username,
+                  collected_at: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
+                  keywords_matched: matched,
+                  region: null,
+                });
+              }
+              break; // success — no need to try other instances
+            } catch { continue; }
+          }
+          // Update last_checked
+          await supabase.from("monitored_accounts").update({ last_checked: new Date().toISOString() }).eq("id", account.id);
+
+        } else if (account.platform === "youtube") {
+          // YouTube channel RSS (no API key needed)
+          const channelId = account.channel_id || account.username;
+          const url = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+          const resp = await fetch(url, {
+            headers: { "User-Agent": "MuglaMonitor/1.0" },
+            signal: AbortSignal.timeout(8000),
+          });
+          if (resp.ok) {
+            const xml = await resp.text();
+            const entries = xml.match(/<entry>([\s\S]*?)<\/entry>/g) || [];
+            for (const entry of entries.slice(0, 10)) {
+              const title   = entry.match(/<title>(.*?)<\/title>/)?.[1] || "";
+              const videoId = entry.match(/<yt:videoId>(.*?)<\/yt:videoId>/)?.[1] || "";
+              const desc    = entry.match(/<media:description>([\s\S]*?)<\/media:description>/)?.[1] || "";
+              const pubDate = entry.match(/<published>(.*?)<\/published>/)?.[1] || "";
+              const text    = title + " " + desc;
+              const textLow = text.toLowerCase();
+              const matched = kw.filter((k: string) => textLow.includes(k));
+              if (matched.length === 0) continue;
+              posts.push({
+                platform: "web",
+                content: text.slice(0, 500),
+                source_url: videoId ? `https://youtube.com/watch?v=${videoId}` : "",
+                source_author: account.display_name || account.username,
+                collected_at: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
+                keywords_matched: matched,
+                region: null,
+              });
+            }
+            await supabase.from("monitored_accounts").update({ last_checked: new Date().toISOString() }).eq("id", account.id);
+          }
+        }
+        // Instagram, Facebook, LinkedIn: public scraping not reliable without auth;
+        // they are stored in the table but skipped until a reliable source is available.
+      } catch { /* skip this account */ }
+    }
+  } catch { /* table may not exist yet */ }
+  return posts;
+}
+
+
 // ─── Email Alerts Processor ───
 async function processEmailAlerts(supabase: any, keywords: string[]): Promise<CollectedPost[]> {
   const posts: CollectedPost[] = [];
@@ -429,6 +528,8 @@ Deno.serve(async (req: Request) => {
     if (platforms.includes("eksisozluk")) fetchers.push(fetchEksiSozluk(keywords));
     if (platforms.includes("local_rss") || !platforms.length) fetchers.push(fetchLocalNewsSources(supabase, keywords));
     if (platforms.includes("email_alerts")) fetchers.push(processEmailAlerts(supabase, keywords));
+    // Always include monitored accounts (username-based monitoring)
+    fetchers.push(fetchMonitoredAccounts(supabase, keywords));
 
     const allResults = await Promise.allSettled(fetchers);
     for (const result of allResults) {

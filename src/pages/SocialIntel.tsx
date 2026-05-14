@@ -21,6 +21,7 @@ import { LiveFeedIndicator } from "@/components/social/LiveFeedIndicator";
 import { relativeTime, detectRegion } from "@/lib/time-utils";
 import { SocialRegionMap, generateRegionMapData } from "@/components/social/SocialRegionMap";
 import { ProtocolMentionPanel } from "@/components/social/ProtocolMentionPanel";
+import { MonitoredAccountsPanel } from "@/components/social/MonitoredAccountsPanel";
 import { supabase } from "@/integrations/supabase/client";
 
 type AnalysisItem = {
@@ -433,7 +434,11 @@ const SocialIntel = () => {
               />
             </DashboardPanel>
 
-                        <DashboardPanel title="📰 Yerel Haber Kaynakları" subtitle="Gazete & RSS takibi">
+                        <DashboardPanel title="📱 Sosyal Medya Hesaplarım" subtitle="Hesap izle · keyword eşleştir">
+              <MonitoredAccountsPanel />
+            </DashboardPanel>
+
+            <DashboardPanel title="📰 Yerel Haber Kaynakları" subtitle="Gazete & RSS takibi">
               <NewsSourceManager />
             </DashboardPanel>
 
