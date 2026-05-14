@@ -58,18 +58,22 @@ export function useAlertSystem() {
         const earthquakes = data?.data?.earthquakes || [];
         
         for (const rule of eqRules) {
+          // Guard: USGS can return features with null/undefined properties
           const recent = earthquakes.filter((eq: any) => {
+            if (!eq?.properties?.time || eq.properties.mag == null) return false;
             const age = Date.now() - eq.properties.time;
-            return age < 60 * 60 * 1000 && eq.properties.mag >= rule.threshold; // Last hour
+            return age < 60 * 60 * 1000 && eq.properties.mag >= rule.threshold;
           });
 
           if (recent.length > 0) {
-            const biggest = recent.sort((a: any, b: any) => b.properties.mag - a.properties.mag)[0];
+            const biggest = recent.sort((a: any, b: any) =>
+              (b.properties?.mag ?? 0) - (a.properties?.mag ?? 0)
+            )[0];
             newAlerts.push({
               id: `${rule.id}-${Date.now()}`,
               ruleId: rule.id,
-              message: `🔴 Deprem: M${biggest.properties.mag.toFixed(1)} - ${biggest.properties.place}`,
-              severity: biggest.properties.mag >= 5 ? "critical" : "warning",
+              message: `🔴 Deprem: M${(biggest.properties?.mag ?? 0).toFixed(1)} - ${biggest.properties?.place ?? "Bilinmeyen konum"}`,
+              severity: (biggest.properties?.mag ?? 0) >= 5 ? "critical" : "warning",
               timestamp: Date.now(),
               dismissed: false,
             });

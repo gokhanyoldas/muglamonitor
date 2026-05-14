@@ -114,10 +114,64 @@ class IntelligenceHub {
     });
   }
 
+  // ── Edge Function routing ──────────────────────────────────────────────────
+  // reference-data: demographics, health, agriculture, culture
+  // data-scrape: weather, air_quality, earthquakes, economy, news,
+  //              trends, dams, tourism, energy, real_estate, road_works
+  // social  → query social_posts DB (no Edge Function call)
+  // security → no handler yet; skip silently
+  // environment → alias to air_quality
+  // transport → alias to road_works
+
+  private static readonly REFERENCE_CATEGORIES = new Set<DataCategory>([
+    "demographics", "health", "agriculture", "culture",
+  ]);
+
+  private static readonly SCRAPE_ALIAS: Partial<Record<DataCategory, string>> = {
+    environment: "air_quality",
+    transport: "road_works",
+  };
+
+  private async fetchSocialFromDB(): Promise<any> {
+    const { data } = await supabase
+      .from("social_posts")
+      .select("platform,sentiment,content,author,url,published_at,keywords_matched")
+      .order("published_at", { ascending: false })
+      .limit(100);
+    const posts = data ?? [];
+    return {
+      posts,
+      total: posts.length,
+      negative: posts.filter((p: any) => p.sentiment === "negative").length,
+      positive: posts.filter((p: any) => p.sentiment === "positive").length,
+      neutral: posts.filter((p: any) => p.sentiment === "neutral").length,
+    };
+  }
+
   private async fetchAndCacheData(category: DataCategory) {
     try {
-      const { data, error } = await supabase.functions.invoke("data-scrape", {
-        body: { type: category },
+      // social: read from DB directly
+      if (category === "social") {
+        const socialData = await this.fetchSocialFromDB().catch(() => null);
+        if (!socialData) return;
+        const intel: IntelligenceData = {
+          category, timestamp: Date.now(), data: socialData, isLive: true,
+        };
+        this.cacheData(intel);
+        this.notifySubscribers(category, socialData, true);
+        return;
+      }
+
+      // security: no backend yet
+      if (category === "security") return;
+
+      const functionName = IntelligenceHub.REFERENCE_CATEGORIES.has(category)
+        ? "reference-data"
+        : "data-scrape";
+      const typeParam = (IntelligenceHub.SCRAPE_ALIAS as Record<string, string>)[category] ?? category;
+
+      const { data, error } = await supabase.functions.invoke(functionName, {
+        body: { type: typeParam },
       });
 
       if (error) {

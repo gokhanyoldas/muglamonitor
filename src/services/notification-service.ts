@@ -23,13 +23,15 @@ class NotificationService {
 
     this.permission = Notification.permission;
 
-    // Register service worker
+    // Register service worker (not supported on StackBlitz/bolt.new — silently skip)
     if ("serviceWorker" in navigator) {
       try {
         this.swRegistration = await navigator.serviceWorker.register("/sw.js");
         console.log("SW registered for notifications");
       } catch (e) {
-        console.error("SW registration failed:", e);
+        // Service Workers are not available in WebContainer/bolt.new environments.
+        // Notifications will still work via Notification API without a SW.
+        console.debug("SW not available in this environment:", (e as Error).message);
       }
     }
 
