@@ -20,6 +20,7 @@ import { WeeklyComparison, generateComparisonData } from "@/components/social/We
 import { LiveFeedIndicator } from "@/components/social/LiveFeedIndicator";
 import { relativeTime, detectRegion } from "@/lib/time-utils";
 import { SocialRegionMap, generateRegionMapData } from "@/components/social/SocialRegionMap";
+import { ProtocolMentionPanel } from "@/components/social/ProtocolMentionPanel";
 import { supabase } from "@/integrations/supabase/client";
 
 type AnalysisItem = {
@@ -59,6 +60,7 @@ const SocialIntel = () => {
   const [isCollecting, setIsCollecting] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [protocolFilter, setProtocolFilter] = useState<string | null>(null);
   const [filters, setFilters] = useState<SocialFilters>({
     platform: "all",
     sentiment: "all",
@@ -176,15 +178,25 @@ const SocialIntel = () => {
   }, [autoRefresh, collectData]);
 
   // Filtered results
+  // Turkish-safe lowercase for protocol filter matching
+  const trLower = (s: string) => s.replace(/İ/g, "i").replace(/I/g, "ı").toLowerCase();
+
   const filtered = useMemo(() => {
     return analyses.filter(item => {
       if (filters.platform !== "all" && item.platform !== filters.platform) return false;
       if (filters.sentiment !== "all" && item.sentiment !== filters.sentiment) return false;
       if (filters.region && item.region !== filters.region) return false;
       if (filters.keyword && !item.content.toLowerCase().includes(filters.keyword.toLowerCase())) return false;
+      // Protocol member filter (set when user clicks a member in ProtocolMentionPanel)
+      if (protocolFilter) {
+        const hay = trLower(item.content);
+        const parts = trLower(protocolFilter).split(/\s+/);
+        const surname = parts[parts.length - 1];
+        if (!hay.includes(trLower(protocolFilter)) && (surname.length < 4 || !hay.includes(surname))) return false;
+      }
       return true;
     });
-  }, [analyses, filters]);
+  }, [analyses, filters, protocolFilter]);
 
   // Stats
   const stats = useMemo(() => {
@@ -414,7 +426,14 @@ const SocialIntel = () => {
             </DashboardPanel>
 
             {/* News Source Manager */}
-            <DashboardPanel title="📰 Yerel Haber Kaynakları" subtitle="Gazete & RSS takibi">
+            <DashboardPanel title="🏛️ Protokol Üyesi Analizi" subtitle="İsim eşleştirme · tıkla filtrele">
+              <ProtocolMentionPanel
+                analyses={analyses}
+                onMemberFilter={setProtocolFilter}
+              />
+            </DashboardPanel>
+
+                        <DashboardPanel title="📰 Yerel Haber Kaynakları" subtitle="Gazete & RSS takibi">
               <NewsSourceManager />
             </DashboardPanel>
 
