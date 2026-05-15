@@ -51,9 +51,17 @@ Deno.serve(async (req: Request) => {
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
       const cells = row.match(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi) || [];
-      
-      // Strip HTML tags from cell content
-      const getText = (html: string) => html.replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&nbsp;/g, " ").trim();
+
+      // Decode all HTML entities including Turkish chars (&#304; = İ, &#305; = ı, etc.)
+      const decodeEntities = (s: string) =>
+        s
+          .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+          .replace(/&nbsp;/g, ' ').replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+          .replace(/&#([0-9]+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
+          .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
+      // Strip HTML tags, decode entities, normalize whitespace
+      const getText = (html: string) =>
+        decodeEntities(html.replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
       const texts = cells.map(getText);
 
       // Check for colspan (category row indicator)

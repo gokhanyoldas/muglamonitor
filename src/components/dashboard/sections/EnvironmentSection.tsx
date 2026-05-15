@@ -17,7 +17,11 @@ const defaultDams = [
   { name: "Çamiçi Barajı", rate: 39, capacity: "18 hm³" },
 ];
 
-const defaultWeather = { temperature: 14, humidity: 68, wind_speed: 22, uv_index: 3, sea_temp: 16 };
+const defaultWeather = { temperature: 14, humidity: 68, wind_speed: 22, windspeed: 22, uv_index: 3, sea_temp: 16, condition: 'Açık' };
+
+// Safe display value: returns String(v) if defined/non-null, else fallback
+const sv = (v: any, fallback: number | string) =>
+  v !== undefined && v !== null ? String(v) : String(fallback);
 const defaultAirQuality = { aqi: 42, pm25: 15, pm10: 28, quality_label: "İyi" };
 
 export const EnvironmentSection = () => {
@@ -44,14 +48,14 @@ export const EnvironmentSection = () => {
             <DataFreshnessIndicator category="weather" size="sm" />
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-          <StatCard label="Sıcaklık" value={String(w.temperature)} unit="°C" variant="primary" />
-          <StatCard label="Nem" value={String(w.humidity)} unit="%" />
-          <StatCard label="Rüzgar" value={String(w.wind_speed)} unit="km/h" />
-          <StatCard label="UV İndeksi" value={String(w.uv_index)} variant="accent" />
+          <StatCard label="Sıcaklık" value={sv(w.temperature, 14)} unit="°C" variant="primary" />
+          <StatCard label="Nem" value={sv(w.humidity, 68)} unit="%" />
+          <StatCard label="Rüzgar" value={sv(w.windspeed ?? w.wind_speed, 22)} unit="km/h" />
+          <StatCard label="UV İndeksi" value={sv(w.uv_index, 0)} variant="accent" />
         </div>
         <div className="grid grid-cols-2 gap-2 mb-3">
-          <StatCard label="Deniz Suyu" value={String(w.sea_temp ?? 16)} unit="°C" variant="accent" />
-          <StatCard label="Durum" value={w.condition || "Bilinmiyor"} />
+          <StatCard label="Deniz Suyu" value={sv(w.sea_temp, 16)} unit="°C" variant="accent" />
+          <StatCard label="Durum" value={w.condition || 'Açık'} />
         </div>
         {w.districts && Array.isArray(w.districts) && w.districts.length > 0 && (
           <>

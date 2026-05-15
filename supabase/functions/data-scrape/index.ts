@@ -13,7 +13,7 @@ async function fetchWeather() {
   url.searchParams.set('latitude', String(MUGLA_LAT));
   url.searchParams.set('longitude', String(MUGLA_LON));
   url.searchParams.set('current_weather', 'true');
-  url.searchParams.set('hourly', 'temperature_2m,relativehumidity_2m,windspeed_10m,precipitation,weathercode,apparent_temperature');
+  url.searchParams.set('hourly', 'temperature_2m,relativehumidity_2m,windspeed_10m,precipitation,weathercode,apparent_temperature,uv_index');
   url.searchParams.set('daily', 'temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode,sunrise,sunset,windspeed_10m_max');
   url.searchParams.set('timezone', 'Europe/Istanbul');
   url.searchParams.set('forecast_days', '7');
@@ -23,17 +23,41 @@ async function fetchWeather() {
   if (!res.ok) throw new Error(`Open-Meteo weather error: ${res.status}`);
   const d = await res.json();
 
-  const currentHourIndex = d.hourly?.time?.findIndex(
-    (t: string) => t.startsWith(new Date().toISOString().slice(0, 13))
-  ) ?? 0;
+  // Istanbul-local hour index (fixes UTC vs +03:00 mismatch)
+  const nowLocalPrefix = new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Istanbul' }).slice(0, 13);
+  const currentHourIndex = Math.max(
+    d.hourly?.time?.findIndex((t: string) => t.startsWith(nowLocalPrefix)) ?? 0, 0
+  );
+
+  // Weathercode → Turkish condition label
+  const WCODE_TR: Record<number, string> = {
+    0:'Açık',1:'Az Bulutlu',2:'Parçalı Bulutlu',3:'Bulutlu',
+    45:'Sisli',48:'Kırağılı Sis',
+    51:'Hafif Çisenti',53:'Çisenti',55:'Yoğun Çisenti',
+    61:'Hafif Yağmur',63:'Yağmur',65:'Şiddetli Yağmur',
+    71:'Hafif Kar',73:'Kar',75:'Yoğun Kar',77:'Kar Tanesi',
+    80:'Hafif Sağanak',81:'Sağanak',82:'Şiddetli Sağanak',
+    85:'Hafif Kar Sağanağı',86:'Yoğun Kar Sağanağı',
+    95:'Gök Gürültülü Fırtına',96:'Dolulu Fırtına',99:'Şiddetli Dolulu Fırtına',
+  };
+  const wcode = d.current_weather?.weathercode ?? 0;
+  const condition = (WCODE_TR as any)[wcode] ?? 'Bilinmiyor';
+
+  // Aegean sea surface temperature — monthly seasonal model (Jan–Dec)
+  const SEA_TEMPS = [16,15,15,16,18,22,26,27,25,22,19,17];
+  const sea_temp = SEA_TEMPS[new Date().getMonth()];
 
   return {
     temperature: d.current_weather?.temperature,
-    windspeed: d.current_weather?.windspeed,
-    weathercode: d.current_weather?.weathercode,
+    windspeed: d.current_weather?.windspeed,      // original Open-Meteo field
+    wind_speed: d.current_weather?.windspeed,      // alias for frontend compat
+    weathercode: wcode,
+    condition,
     is_day: d.current_weather?.is_day,
-    humidity: d.hourly?.relativehumidity_2m?.[Math.max(currentHourIndex, 0)],
-    apparent_temperature: d.hourly?.apparent_temperature?.[Math.max(currentHourIndex, 0)],
+    humidity: d.hourly?.relativehumidity_2m?.[currentHourIndex] ?? 68,
+    apparent_temperature: d.hourly?.apparent_temperature?.[currentHourIndex],
+    uv_index: d.hourly?.uv_index?.[currentHourIndex] ?? 0,
+    sea_temp,
     daily: {
       dates: d.daily?.time,
       max_temps: d.daily?.temperature_2m_max,

@@ -102,16 +102,31 @@ const Index = () => {
         {/* Filtered or full grid */}
         {isGenel ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {/* Col 1 — Economy + Social Intel + Social */}
             <div className="space-y-3">
               <SmartCard category="economy">
                 <EconomySection />
               </SmartCard>
+              <SmartCard category="social">
+                <SocialIntelSection />
+              </SmartCard>
+              <SmartCard category="social">
+                <SocialSection />
+              </SmartCard>
             </div>
+            {/* Col 2 — Environment + Energy + Security */}
             <div className="space-y-3">
               <SmartCard category="environment">
                 <EnvironmentSection />
               </SmartCard>
+              <SmartCard category="energy">
+                <EnergySection />
+              </SmartCard>
+              <SmartCard category="security">
+                <SecuritySection />
+              </SmartCard>
             </div>
+            {/* Col 3 — Tourism + Culture + Transport */}
             <div className="space-y-3">
               <SmartCard category="tourism">
                 <TourismSection />
@@ -119,22 +134,8 @@ const Index = () => {
               <SmartCard category="culture">
                 <CultureAgriSection />
               </SmartCard>
-            </div>
-            <div className="space-y-3">
-              <SmartCard category="social">
-                <SocialIntelSection />
-              </SmartCard>
-              <SmartCard category="social">
-                <SocialSection />
-              </SmartCard>
               <SmartCard category="transport">
                 <TransportSection />
-              </SmartCard>
-              <SmartCard category="energy">
-                <EnergySection />
-              </SmartCard>
-              <SmartCard category="security">
-                <SecuritySection />
               </SmartCard>
             </div>
           </div>

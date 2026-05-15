@@ -41,14 +41,16 @@ export const ProtocolSection = () => {
   // Filter
   const filtered = useMemo(() => {
     if (!searchTerm.trim()) return grouped;
-    const lower = searchTerm.toLowerCase();
+    // Turkish-locale case fold: handles İ→i, I→ı, Ş→ş, Ğ→ğ correctly
+    const lower = searchTerm.toLocaleLowerCase('tr-TR');
+    const trLower = (s: string) => s.toLocaleLowerCase('tr-TR');
     const result = new Map<string, ProtocolMember[]>();
     for (const [cat, members] of grouped) {
       const matches = members.filter(
         (m) =>
-          m.isim.toLowerCase().includes(lower) ||
-          m.unvan.toLowerCase().includes(lower) ||
-          cat.toLowerCase().includes(lower)
+          trLower(m.isim).includes(lower) ||
+          trLower(m.unvan).includes(lower) ||
+          trLower(cat).includes(lower)
       );
       if (matches.length > 0) result.set(cat, matches);
     }
