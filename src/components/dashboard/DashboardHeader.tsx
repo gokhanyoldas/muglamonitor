@@ -1,4 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { DISTRICTS } from "@/data/districts";
+import { MapPin, ChevronDown } from "lucide-react";
 import { AlertPanel } from "./AlertPanel";
 
 export type DashboardTab = "genel" | "ekonomi" | "cevre" | "turizm" | "ulasim" | "sosyal" | "guvenlik" | "enerji" | "protokol";
@@ -22,6 +25,19 @@ const tabs: { label: string; value: DashboardTab }[] = [
 
 export const DashboardHeader = ({ activeTab = "genel", onTabChange }: DashboardHeaderProps) => {
   const [time, setTime] = useState(new Date());
+  const [districtOpen, setDistrictOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDistrictOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -102,6 +118,32 @@ export const DashboardHeader = ({ activeTab = "genel", onTabChange }: DashboardH
             {tab.label}
           </button>
         ))}
+          {/* İlçeler dropdown */}
+          <div className="relative ml-1 flex-shrink-0" ref={dropdownRef}>
+            <button
+              onClick={() => setDistrictOpen(v => !v)}
+              className="flex items-center gap-1 px-2.5 py-2 text-[10px] font-mono whitespace-nowrap text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent"
+            >
+              <MapPin size={10} />
+              İlçeler
+              <ChevronDown size={9} className={`transition-transform ${districtOpen ? "rotate-180" : ""}`} />
+            </button>
+            {districtOpen && (
+              <div className="absolute top-full left-0 mt-1 w-36 bg-background border border-border rounded-md shadow-lg z-50 overflow-hidden">
+                <div className="py-0.5 max-h-64 overflow-y-auto scrollbar-thin">
+                  {DISTRICTS.map(d => (
+                    <button
+                      key={d.slug}
+                      onClick={() => { navigate(`/ilce/${d.slug}`); setDistrictOpen(false); }}
+                      className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-mono text-foreground hover:bg-muted/40 transition-colors text-left"
+                    >
+                      <span>{d.emoji}</span> {d.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
       </div>
     </header>
   );

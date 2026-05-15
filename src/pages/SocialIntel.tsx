@@ -15,6 +15,8 @@ import { FilterPanel, SocialFilters } from "@/components/social/FilterPanel";
 import { KeywordManager } from "@/components/social/KeywordManager";
 import { NewsSourceManager } from "@/components/social/NewsSourceManager";
 import { TrendChart, generateTrendFromAnalyses } from "@/components/social/TrendChart";
+import { SentimentHistoryChart } from "@/components/social/SentimentHistoryChart";
+import { NewsDataCorrelation } from "@/components/social/NewsDataCorrelation";
 import { SourceReliability, calculateReliability } from "@/components/social/SourceReliability";
 import { WeeklyComparison, generateComparisonData } from "@/components/social/WeeklyComparison";
 import { LiveFeedIndicator } from "@/components/social/LiveFeedIndicator";
@@ -353,7 +355,9 @@ const SocialIntel = () => {
           <div className="lg:col-span-2 space-y-4">
             {/* Trend Chart */}
             <DashboardPanel title="📈 Mention & Duygu Trendi" subtitle="Zaman serisi">
-              <TrendChart data={trendData} />
+              <SentimentHistoryChart />
+              <NewsDataCorrelation />
+              <TrendChart data={trendData} title="Mevcut Oturum Trendi" />
             </DashboardPanel>
 
             {/* Feed */}

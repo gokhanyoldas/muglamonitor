@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import SocialIntel from "./pages/SocialIntel";
 import OSINTDashboard from "./pages/OSINTDashboard";
+import DistrictPage from "./pages/DistrictPage";
 import NotFound from "./pages/NotFound";
 import { intelligenceHub } from "@/lib/intelligence-hub";
 import { AnomalyPanel } from "@/components/intelligence/AnomalyPanel";
@@ -52,6 +53,7 @@ const AppContent = () => {
         <Route path="/" element={<Index />} />
         <Route path="/social-intel" element={<SocialIntel />} />
         <Route path="/osint" element={<OSINTDashboard />} />
+        <Route path="/ilce/:slug" element={<DistrictPage />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
