@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { DISTRICTS } from "@/data/districts";
 import { MapPin, ChevronDown } from "lucide-react";
 import { AlertPanel } from "./AlertPanel";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export type DashboardTab = "genel" | "ekonomi" | "cevre" | "turizm" | "ulasim" | "sosyal" | "guvenlik" | "enerji" | "protokol";
 
@@ -46,10 +48,7 @@ export const DashboardHeader = ({ activeTab = "genel", onTabChange }: DashboardH
 
   const formatDate = (d: Date) => {
     return d.toLocaleDateString("tr-TR", {
-      weekday: "short",
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
+      weekday: "short", day: "2-digit", month: "short", year: "numeric",
     });
   };
 
@@ -81,7 +80,7 @@ export const DashboardHeader = ({ activeTab = "genel", onTabChange }: DashboardH
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-1 sm:gap-2">
           <div className="hidden lg:flex items-center gap-4 text-[10px] font-mono text-muted-foreground">
             <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-muted/30 border border-border/50">
               <span>📡</span>
@@ -92,10 +91,16 @@ export const DashboardHeader = ({ activeTab = "genel", onTabChange }: DashboardH
               <span>SON GÜNCELLEME: 2dk</span>
             </div>
           </div>
-          
-          {/* Alert Notification Bell */}
+
+          {/* M13: Language switcher */}
+          <LanguageSwitcher />
+
+          {/* M4: Notification bell */}
+          <NotificationBell />
+
+          {/* Existing alert bell */}
           <AlertPanel />
-          
+
           <div className="text-right">
             <div className="text-[11px] sm:text-xs font-mono text-foreground font-medium">{formatTime(time)}</div>
             <div className="text-[8px] sm:text-[9px] font-mono text-muted-foreground">{formatDate(time)}</div>
@@ -103,8 +108,8 @@ export const DashboardHeader = ({ activeTab = "genel", onTabChange }: DashboardH
         </div>
       </div>
 
-      {/* Category tabs - mobile scrollable */}
-      <div className="flex items-center gap-1 px-2 sm:px-4 py-1.5 overflow-x-auto scrollbar-hide border-t border-border/50 -mx-0">
+      {/* Category tabs — mobile scrollable */}
+      <div className="flex items-center gap-1 px-2 sm:px-4 py-1.5 overflow-x-auto scrollbar-hide border-t border-border/50">
         {tabs.map((tab) => (
           <button
             key={tab.value}
@@ -118,32 +123,33 @@ export const DashboardHeader = ({ activeTab = "genel", onTabChange }: DashboardH
             {tab.label}
           </button>
         ))}
-          {/* İlçeler dropdown */}
-          <div className="relative ml-1 flex-shrink-0" ref={dropdownRef}>
-            <button
-              onClick={() => setDistrictOpen(v => !v)}
-              className="flex items-center gap-1 px-2.5 py-2 text-[10px] font-mono whitespace-nowrap text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent"
-            >
-              <MapPin size={10} />
-              İlçeler
-              <ChevronDown size={9} className={`transition-transform ${districtOpen ? "rotate-180" : ""}`} />
-            </button>
-            {districtOpen && (
-              <div className="absolute top-full left-0 mt-1 w-36 bg-background border border-border rounded-md shadow-lg z-50 overflow-hidden">
-                <div className="py-0.5 max-h-64 overflow-y-auto scrollbar-thin">
-                  {DISTRICTS.map(d => (
-                    <button
-                      key={d.slug}
-                      onClick={() => { navigate(`/ilce/${d.slug}`); setDistrictOpen(false); }}
-                      className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-mono text-foreground hover:bg-muted/40 transition-colors text-left"
-                    >
-                      <span>{d.emoji}</span> {d.name}
-                    </button>
-                  ))}
-                </div>
+
+        {/* İlçeler dropdown */}
+        <div className="relative ml-1 flex-shrink-0" ref={dropdownRef}>
+          <button
+            onClick={() => setDistrictOpen(v => !v)}
+            className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-mono whitespace-nowrap text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <MapPin size={10} />
+            İlçeler
+            <ChevronDown size={9} className={`transition-transform ${districtOpen ? "rotate-180" : ""}`} />
+          </button>
+          {districtOpen && (
+            <div className="absolute top-full left-0 mt-1 w-36 bg-background border border-border rounded-md shadow-lg z-50 overflow-hidden">
+              <div className="py-0.5 max-h-64 overflow-y-auto scrollbar-thin">
+                {DISTRICTS.map(d => (
+                  <button
+                    key={d.slug}
+                    onClick={() => { navigate(`/ilce/${d.slug}`); setDistrictOpen(false); }}
+                    className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-mono text-foreground hover:bg-muted/40 transition-colors text-left"
+                  >
+                    <span>{d.emoji}</span> {d.name}
+                  </button>
+                ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

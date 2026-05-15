@@ -15,6 +15,7 @@ import { AIStrategyPanel } from "@/components/intelligence/AIStrategyPanel";
 import { DataQualityDashboard } from "@/components/DataQualityDashboard";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AuthPage } from "@/components/auth/AuthPage";
+import { I18nProvider } from "@/hooks/useTranslation";
 
 const queryClient = new QueryClient();
 
@@ -23,12 +24,15 @@ const AppContent = () => {
 
   useEffect(() => {
     intelligenceHub.start();
+    // Register service worker for PWA + push notifications (M3, M4)
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
     return () => {
       intelligenceHub.stop();
     };
   }, []);
 
-  // Show loading
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -42,7 +46,6 @@ const AppContent = () => {
     );
   }
 
-  // Show auth page if not logged in and not guest
   if (!user && !isGuest) {
     return <AuthPage onAuth={enterAsGuest} />;
   }
@@ -71,7 +74,9 @@ const App = () => {
         <Toaster />
         <Sonner />
         <AuthProvider>
-          <AppContent />
+          <I18nProvider>
+            <AppContent />
+          </I18nProvider>
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>

@@ -20,6 +20,14 @@ import { LocalGovBudgetSection } from "@/components/dashboard/sections/LocalGovB
 import { useLiveData } from "@/hooks/useLiveData";
 import { SmartCard } from "@/components/intelligence/SmartCard";
 import { LiveIndicator } from "@/components/intelligence/LiveIndicator";
+// M10: Deprem Erken Uyarı Banner
+import { EarthquakeAlertBanner } from "@/components/EarthquakeAlertBanner";
+// M11: Yangın Risk Göstergesi
+import { FireRiskIndicator } from "@/components/FireRiskIndicator";
+// M9: Turizm Tahmin Modeli
+import { TourismForecastPanel } from "@/components/TourismForecastPanel";
+// M15: Kullanıcı Profil Paneli
+import { UserProfilePanel } from "@/components/UserProfilePanel";
 
 const sectionComponents: Record<Exclude<DashboardTab, "genel">, React.FC[]> = {
   ekonomi: [EconomySection],
@@ -44,7 +52,6 @@ const Index = () => {
 
   const [liveStatuses, setLiveStatuses] = useState<Record<string, boolean>>({});
 
-  // Live data hooks for top summary bar
   const { data: weatherData } = useLiveData<any>("weather", { refetchInterval: 15 * 60 * 1000 });
   const { data: ecoData } = useLiveData<any>("economy", { refetchInterval: 30 * 60 * 1000 });
   const { data: aqData } = useLiveData<any>("air_quality", { refetchInterval: 30 * 60 * 1000 });
@@ -52,17 +59,14 @@ const Index = () => {
   const { data: tourismData } = useLiveData<any>("tourism", { refetchInterval: 60 * 60 * 1000 });
   const { data: demoData } = useLiveData<any>("demographics", { refetchInterval: 24 * 60 * 60 * 1000 });
 
-  // Compute dynamic top bar values
-  const population = demoData?.population ?? "1.02M";
+  const population     = demoData?.population ?? "1.02M";
   const annualTourists = tourismData?.annual_tourists ?? "3.8M";
-  const unemployment = ecoData?.unemployment_rate ? `${ecoData.unemployment_rate}%` : "11.2%";
-  const temperature = weatherData?.temperature ? `${weatherData.temperature}°C` : "14°C";
-  const aqi = aqData?.aqi ?? 42;
+  const unemployment   = ecoData?.unemployment_rate ? `${ecoData.unemployment_rate}%` : "11.2%";
+  const temperature    = weatherData?.temperature ? `${weatherData.temperature}°C` : "14°C";
+  const aqi            = aqData?.aqi ?? 42;
   const hotelOccupancy = tourismData?.hotel_occupancy ? `${tourismData.hotel_occupancy}%` : "38%";
-
-  // Compute average dam level
-  const dams = Array.isArray(damData) ? damData : damData?.dams || [];
-  const avgDam = dams.length > 0
+  const dams           = Array.isArray(damData) ? damData : damData?.dams || [];
+  const avgDam         = dams.length > 0
     ? `${Math.round(dams.reduce((a: number, d: any) => a + (d.occupancy_rate ?? d.rate ?? 50), 0) / dams.length)}%`
     : "54%";
 
@@ -71,19 +75,22 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background scanline">
       <DashboardHeader activeTab={activeTab} onTabChange={setActiveTab} />
-      
+
+      {/* M10: Earthquake banner — always visible above main content */}
+      <EarthquakeAlertBanner />
+
       <main className="p-3 max-w-[1800px] mx-auto">
-        {/* Top summary bar - LIVE */}
+        {/* Top summary bar */}
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-4">
           {[
-            { label: "Nüfus", value: population, color: "text-primary", category: "demographics" },
-            { label: "Turist/Yıl", value: annualTourists, color: "text-accent", category: "tourism" },
-            { label: "İşsizlik", value: unemployment, color: "text-warning", category: "economy" },
-            { label: "Hava", value: temperature, color: "text-foreground", category: "weather" },
-            { label: "AQI", value: String(aqi), color: "text-success", category: "air_quality" },
-            { label: "Otel Doluluk", value: hotelOccupancy, color: "text-accent", category: "tourism" },
-            { label: "Baraj", value: avgDam, color: "text-warning", category: "dams" },
-            { label: "Güvenlik", value: "78/100", color: "text-primary", category: "security" },
+            { label: "Nüfus",       value: population,     color: "text-primary",     category: "demographics" },
+            { label: "Turist/Yıl",  value: annualTourists, color: "text-accent",      category: "tourism" },
+            { label: "İşsizlik",    value: unemployment,   color: "text-warning",     category: "economy" },
+            { label: "Hava",        value: temperature,    color: "text-foreground",  category: "weather" },
+            { label: "AQI",         value: String(aqi),    color: "text-success",     category: "air_quality" },
+            { label: "Otel Doluluk",value: hotelOccupancy, color: "text-accent",      category: "tourism" },
+            { label: "Baraj",       value: avgDam,         color: "text-warning",     category: "dams" },
+            { label: "Güvenlik",    value: "78/100",       color: "text-primary",     category: "security" },
           ].map((item) => (
             <SmartCard key={item.label} category={item.category as any} onDataUpdate={(_, isLive) => {
               setLiveStatuses(prev => ({ ...prev, [item.label]: isLive }));
@@ -99,53 +106,50 @@ const Index = () => {
           ))}
         </div>
 
-        {/* Filtered or full grid */}
         {isGenel ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {/* Col 1 — Economy + Social Intel + Social */}
+            {/* Col 1 — Economy + Social */}
             <div className="space-y-3">
-              <SmartCard category="economy">
-                <EconomySection />
-              </SmartCard>
-              <SmartCard category="social">
-                <SocialIntelSection />
-              </SmartCard>
-              <SmartCard category="social">
-                <SocialSection />
-              </SmartCard>
+              <SmartCard category="economy"><EconomySection /></SmartCard>
+              <SmartCard category="social"><SocialIntelSection /></SmartCard>
+              <SmartCard category="social"><SocialSection /></SmartCard>
             </div>
-            {/* Col 2 — Environment + Energy + Security */}
+            {/* Col 2 — Environment + FireRisk + Energy + Security */}
             <div className="space-y-3">
-              <SmartCard category="environment">
-                <EnvironmentSection />
-              </SmartCard>
-              <SmartCard category="energy">
-                <EnergySection />
-              </SmartCard>
-              <SmartCard category="security">
-                <SecuritySection />
-              </SmartCard>
+              <SmartCard category="environment"><EnvironmentSection /></SmartCard>
+              {/* M11: Fire risk indicator */}
+              <FireRiskIndicator />
+              <SmartCard category="energy"><EnergySection /></SmartCard>
+              <SmartCard category="security"><SecuritySection /></SmartCard>
             </div>
-            {/* Col 3 — Tourism + Culture + Transport */}
+            {/* Col 3 — TourismForecast + Tourism + Culture + Transport */}
             <div className="space-y-3">
-              <SmartCard category="tourism">
-                <TourismSection />
-              </SmartCard>
-              <SmartCard category="culture">
-                <CultureAgriSection />
-              </SmartCard>
-              <SmartCard category="transport">
-                <TransportSection />
-              </SmartCard>
+              {/* M9: Tourism forecast */}
+              <TourismForecastPanel />
+              <SmartCard category="tourism"><TourismSection /></SmartCard>
+              <SmartCard category="culture"><CultureAgriSection /></SmartCard>
+              <SmartCard category="transport"><TransportSection /></SmartCard>
             </div>
+          </div>
+        ) : activeTab === "cevre" ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
+            <SmartCard category="environment"><EnvironmentSection /></SmartCard>
+            {/* M11: Fire risk in environment tab */}
+            <FireRiskIndicator />
+          </div>
+        ) : activeTab === "turizm" ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
+            {/* M9: Forecast first in tourism tab */}
+            <TourismForecastPanel />
+            <SmartCard category="tourism"><TourismSection /></SmartCard>
+            <SmartCard category="tourism"><GastronomySection /></SmartCard>
+            <SmartCard category="culture"><CultureAgriSection /></SmartCard>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
             {sectionComponents[activeTab as Exclude<DashboardTab, "genel">]?.map((Section, i) => (
               <div key={i} className="space-y-3">
-                <SmartCard category={activeTab as any}>
-                  <Section />
-                </SmartCard>
+                <SmartCard category={activeTab as any}><Section /></SmartCard>
               </div>
             ))}
           </div>
