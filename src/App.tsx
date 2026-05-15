@@ -24,10 +24,15 @@ const AppContent = () => {
 
   useEffect(() => {
     intelligenceHub.start();
-    // Register service worker for PWA + push notifications (M3, M4)
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
+
+    // Register service worker only in production (not in bolt.new/lovable dev env)
+    // to avoid conflicting with their dev service worker
+    if ("serviceWorker" in navigator && import.meta.env.PROD) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {
+        // Silent — SW registration failure should never crash the app
+      });
     }
+
     return () => {
       intelligenceHub.stop();
     };
