@@ -1,122 +1,77 @@
-// Service Worker — Muğla Monitör PWA + Offline Cache (M3)
-// Handles: offline caching, push notifications, background sync
+// Muğla Monitor Service Worker v2
+// Strategy: Network-first for API, Cache-first for static assets.
 
 const CACHE_NAME = "mugla-monitor-v2";
-const STATIC_ASSETS = [
-  "/",
-  "/index.html",
-  "/manifest.json",
-  "/favicon.ico",
-];
+const API_CACHE  = "mugla-monitor-api-v2";
 
-// ── Install: cache static assets ────────────────────────────────────────────
+const PRECACHE_URLS = ["/", "/index.html", "/offline.html", "/manifest.json", "/favicon.ico"];
+
+const CACHEABLE_APIS = ["api.open-meteo.com", "earthquake.usgs.gov", "api.waqi.info", "api.frankfurter.dev", "opensky-network.org", "news.google.com", "www.reddit.com"];
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch(() => {
-        // Non-fatal: continue even if some assets fail to cache
-      });
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS).catch(() => {})).catch(() => {})
   );
   self.skipWaiting();
 });
 
-// ── Activate: clean old caches ───────────────────────────────────────────────
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
-      )
-    )
+    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME && k !== API_CACHE).map((k) => caches.delete(k))))
   );
-  event.waitUntil(clients.claim());
+  self.clients.claim();
 });
 
-// ── Fetch: stale-while-revalidate for pages, cache-first for static ──────────
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
-
-  // Skip non-GET and external API requests
   if (request.method !== "GET") return;
-  if (url.origin !== self.location.origin) return;
 
-  // Skip Supabase requests (always fresh)
-  if (url.hostname.includes("supabase")) return;
-
-  // Navigation requests: network-first, fallback to cache
-  if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request)
-        .then((res) => {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then((c) => c.put(request, clone));
-          return res;
-        })
-        .catch(() => caches.match("/index.html"))
-    );
-    return;
-  }
-
-  // Static assets: cache-first
-  if (url.pathname.match(/\.(js|css|ico|png|svg|woff2?)$/)) {
+  // Cache-first: static assets
+  if (url.origin === self.location.origin && (url.pathname.match(/\.(js|css|woff2?|ttf|png|svg|ico|webp)$/) || url.pathname.startsWith("/assets/"))) {
     event.respondWith(
       caches.match(request).then((cached) => {
         if (cached) return cached;
-        return fetch(request).then((res) => {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then((c) => c.put(request, clone));
-          return res;
+        return fetch(request).then((resp) => {
+          if (resp.ok) { const clone = resp.clone(); caches.open(CACHE_NAME).then((c) => c.put(request, clone)); }
+          return resp;
         });
       })
     );
     return;
   }
-});
 
-// ── Push: show notifications ────────────────────────────────────────────────
-self.addEventListener("push", (event) => {
-  const data = event.data ? event.data.json() : {};
-
-  const options = {
-    body: data.body || "Yeni bildirim",
-    icon: "/favicon.ico",
-    badge: "/favicon.ico",
-    vibrate: [200, 100, 200],
-    tag: data.tag || "mugla-alert",
-    data: { url: data.url || "/" },
-    actions: [
-      { action: "open", title: "Aç" },
-      { action: "dismiss", title: "Kapat" },
-    ],
-  };
-
-  if (data.severity === "critical") {
-    options.requireInteraction = true;
-    options.vibrate = [500, 200, 500, 200, 500];
+  // Network-first: known APIs
+  const isApiCall = CACHEABLE_APIS.some((origin) => url.hostname.includes(origin));
+  if (isApiCall) {
+    event.respondWith(
+      fetch(request)
+        .then((resp) => {
+          if (resp.ok) { const clone = resp.clone(); caches.open(API_CACHE).then((c) => c.put(request, clone)); }
+          return resp;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || new Response(JSON.stringify({ offline: true }), { headers: { "Content-Type": "application/json" } })))
+    );
+    return;
   }
 
-  event.waitUntil(
-    self.registration.showNotification(data.title || "Muğla Monitör", options)
-  );
+  // HTML pages: network-first, offline.html fallback
+  if (request.headers.get("Accept")?.includes("text/html")) {
+    event.respondWith(
+      fetch(request)
+        .then((resp) => { if (resp.ok) { const clone = resp.clone(); caches.open(CACHE_NAME).then((c) => c.put(request, clone)); } return resp; })
+        .catch(() => caches.match(request) || caches.match("/offline.html") || caches.match("/index.html"))
+    );
+  }
 });
 
-// ── Notification click ──────────────────────────────────────────────────────
+self.addEventListener("push", (event) => {
+  const data = event.data?.json?.() ?? {};
+  event.waitUntil(self.registration.showNotification(data.title ?? "Muğla Monitör", { body: data.body ?? "", icon: "/favicon.ico", tag: data.tag ?? "default" }));
+});
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  if (event.action === "dismiss") return;
-
-  const url = event.notification.data?.url || "/";
-  event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
-      for (const client of windowClients) {
-        if ("focus" in client) {
-          client.navigate(url);
-          return client.focus();
-        }
-      }
-      return clients.openWindow(url);
-    })
-  );
+  const url = event.notification.data?.url ?? "/";
+  event.waitUntil(clients.openWindow(url));
 });
