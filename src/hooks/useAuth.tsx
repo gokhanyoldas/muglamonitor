@@ -7,6 +7,7 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   isGuest: boolean;
+  isAuthenticated: boolean;
   signOut: () => Promise<void>;
   enterAsGuest: () => void;
 }
@@ -16,6 +17,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   isLoading: true,
   isGuest: false,
+  isAuthenticated: false,
   signOut: async () => {},
   enterAsGuest: () => {},
 });
@@ -62,8 +64,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.setItem("mugla-guest", "true");
   };
 
+  const isAuthenticated = !!session || isGuest;
+
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, isGuest, signOut, enterAsGuest }}>
+    <AuthContext.Provider value={{ user, session, isLoading, isGuest, isAuthenticated, signOut, enterAsGuest }}>
       {children}
     </AuthContext.Provider>
   );

@@ -8,9 +8,17 @@ import { initSentry } from "./lib/sentry";
 initSentry();
 
 // ── Service Worker / PWA (Madde 10) ───────────────────────────────────────
+// Only register SW in production when sw.js actually exists
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
+    // Check if sw.js exists before trying to register
+    fetch("/sw.js", { method: "HEAD" })
+      .then((res) => {
+        if (res.ok) {
+          navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
+        }
+      })
+      .catch(() => {});
   });
 }
 

@@ -28,7 +28,6 @@ import { FireRiskIndicator } from "@/components/FireRiskIndicator";
 // M9: Turizm Tahmin Modeli
 import { TourismForecastPanel } from "@/components/TourismForecastPanel";
 // M15: Kullanıcı Profil Paneli
-import { UserProfilePanel } from "@/components/UserProfilePanel";
 
 const sectionComponents: Record<Exclude<DashboardTab, "genel">, React.FC[]> = {
   ekonomi: [EconomySection],
@@ -122,6 +121,7 @@ const Index = () => {
               <FireRiskIndicator />
               <SmartCard category="energy"><EnergySection /></SmartCard>
               <SmartCard category="security"><SecuritySection /></SmartCard>
+              <Globe3DSection />
             </div>
             {/* Col 3 — TourismForecast + Tourism + Culture + Transport */}
             <div className="space-y-3">
