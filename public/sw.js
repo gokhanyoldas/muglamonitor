@@ -60,7 +60,10 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request)
         .then((resp) => { if (resp.ok) { const clone = resp.clone(); caches.open(CACHE_NAME).then((c) => c.put(request, clone)); } return resp; })
-        .catch(() => caches.match(request) || caches.match("/offline.html") || caches.match("/index.html"))
+        .catch(() => caches.match(request)
+  .then((cached) => cached || caches.match("/offline.html"))
+  .then((cached) => cached || caches.match("/index.html"))
+)
     );
   }
 });
