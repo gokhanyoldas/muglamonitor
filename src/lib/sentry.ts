@@ -6,7 +6,10 @@ const IS_PROD = import.meta.env.PROD;
 const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? "1.0.0";
 
 export function initSentry() {
-  if (!SENTRY_DSN) { console.info("[Sentry] VITE_SENTRY_DSN tanımlı değil — error tracking devre dışı"); return; }
+  if (!SENTRY_DSN) {
+    console.info("[Sentry] VITE_SENTRY_DSN tanımlı değil — error tracking devre dışı");
+    return;
+  }
   Sentry.init({
     dsn: SENTRY_DSN,
     environment: IS_PROD ? "production" : "development",
