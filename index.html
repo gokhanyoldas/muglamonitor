@@ -23,12 +23,27 @@
     <meta name="twitter:description" content="Muğla ili canlı veri monitörü." />
     <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/bb74d7ba-2ea6-4c5d-8aaf-5f3464366bc4/id-preview-6d5032a4--d51af684-07aa-4db9-967e-13b160422028.lovable.app-1771335283073.png">
 
-    <!-- PWA Manifest (optional - for future offline support) -->
-    <link rel="manifest" href="/manifest.json" />
   </head>
 
   <body>
     <div id="root"></div>
+    <noscript>
+      <div style="padding:2rem;color:#e5e7eb;background:#0f172a;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:monospace">
+        JavaScript gereklidir.
+      </div>
+    </noscript>
+    <script>
+      // Unregister any stale service workers on load
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          registrations.forEach(function(registration) {
+            if (registration.active && registration.active.scriptURL.includes('sw.js')) {
+              registration.unregister();
+            }
+          });
+        });
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
