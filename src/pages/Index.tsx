@@ -17,6 +17,7 @@ import { TrafficDensityMap } from "@/components/dashboard/sections/TrafficDensit
 import { ProtocolSection } from "@/components/dashboard/sections/ProtocolSection";
 import { TrendTopicsSection } from "@/components/dashboard/sections/TrendTopicsSection";
 import { LocalGovBudgetSection } from "@/components/dashboard/sections/LocalGovBudgetSection";
+import { Globe3DSection } from "@/components/dashboard/sections/Globe3DSection";
 import { useLiveData } from "@/hooks/useLiveData";
 import { SmartCard } from "@/components/intelligence/SmartCard";
 import { LiveIndicator } from "@/components/intelligence/LiveIndicator";
