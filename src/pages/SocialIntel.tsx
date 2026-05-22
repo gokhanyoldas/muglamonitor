@@ -334,7 +334,7 @@ const SocialIntel = () => {
           <Suspense fallback={<div className="flex items-center justify-center h-64 text-muted-foreground"><Loader2 className="animate-spin mr-2" size={16} />Ağ grafiği yükleniyor...</div>}>
             <SocialNetworkGraph
               analyses={analyses}
-              keywords={activeKeywords}
+              keywords={keywords.length > 0 ? keywords : ["Muğla", "Bodrum", "Fethiye", "Marmaris"]}
             />
           </Suspense>
         )}
