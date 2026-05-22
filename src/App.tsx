@@ -51,7 +51,7 @@ function AppContent() {
       <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/" element={<Index />} />
-        <Route path="/sosyal-istihbarat" element={<SocialIntel />} />
+        <Route path="/social-intel" element={<SocialIntel />} />
         <Route path="/osint" element={<OSINTDashboard />} />
         <Route path="/ilce/:ilceId" element={<DistrictPage />} />
         <Route path="*" element={<NotFound />} />
