@@ -31,11 +31,18 @@ Deno.serve(async (req: Request) => {
       body: { keywords, platforms: ["news", "reddit", "eksisozluk"] },
     });
 
+    // 2b. Also call social-platforms for YouTube/Twitter/Facebook
+    const { data: platformResult } = await supabase.functions.invoke("social-platforms", {
+      body: { keywords, platforms: ["youtube", "twitter", "facebook"] },
+    });
+
     if (collectError) {
       throw new Error(`Collection failed: ${collectError.message}`);
     }
 
-    const posts = collectResult?.data?.posts || [];
+    const collectPosts = collectResult?.data?.posts || [];
+    const platformPosts = platformResult?.data?.posts || [];
+    const posts = [...collectPosts, ...platformPosts];
     const total = posts.length;
 
     // 3. If we have posts, run sentiment analysis

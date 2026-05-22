@@ -9,6 +9,8 @@ import { useLiveData } from "@/hooks/useLiveData";
 
 export const SocialIntelSection = () => {
   const { data: trendsData, isLoading } = useLiveData<any>("trends", { refetchInterval: 15 * 60 * 1000 });
+  // Note: YouTube/Twitter/Facebook data flows through social-platforms edge function
+  // which feeds into social_posts table and the full SocialIntel page via social-intel-service
 
   const trends = Array.isArray(trendsData) ? trendsData : [];
   const isLive = trends.length > 0;

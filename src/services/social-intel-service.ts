@@ -146,8 +146,12 @@ class SocialIntelService {
       ? ["news", "reddit", "eksisozluk"] 
       : [platform];
 
-    // Step 1: Collect
-    const collectedItems = await this.collectData(keywords, platforms);
+    // Step 1: Collect from news/reddit/eksisozluk + social platforms (YouTube/Twitter/Facebook)
+    const [newsItems, platformItems] = await Promise.all([
+      this.collectData(keywords, platforms),
+      this.collectPlatformData(keywords),
+    ]);
+    const collectedItems = [...newsItems, ...platformItems];
 
     if (collectedItems.length === 0) {
       return {
@@ -351,6 +355,34 @@ class SocialIntelService {
     if (error) return { success: false };
     return { success: true, collected: data?.collected, analyzed: data?.analyzed };
   }
+
+  // ─── Collect from YouTube/Twitter/Facebook via social-platforms edge function ───
+  async collectPlatformData(keywords: string[]): Promise<LocalCollectedItem[]> {
+    try {
+      const { data, error } = await supabase.functions.invoke("social-platforms", {
+        body: { keywords, platforms: ["youtube", "twitter", "facebook"] },
+      });
+
+      if (error) {
+        console.error("social-platforms error:", error);
+        return [];
+      }
+
+      const posts = data?.data?.posts || [];
+      return posts.map((post: any) => ({
+        platform: post.platform,
+        content: post.content,
+        description: `${post.platform.toUpperCase()} - ${post.author} - ${new Date(post.published_at).toLocaleDateString("tr-TR")}`,
+        source_author: post.author,
+        source_url: post.url,
+        matched_keywords: post.keywords_matched,
+      }));
+    } catch (e) {
+      console.error("Platform collection failed:", e);
+      return [];
+    }
+  }
+
 }
 
 export const socialIntelService = new SocialIntelService();
