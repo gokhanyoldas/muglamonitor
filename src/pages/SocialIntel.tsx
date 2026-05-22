@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel";
 import { Link, useNavigate } from "react-router-dom";
@@ -22,7 +22,7 @@ import { WeeklyComparison, generateComparisonData } from "@/components/social/We
 import { LiveFeedIndicator } from "@/components/social/LiveFeedIndicator";
 import { relativeTime, detectRegion } from "@/lib/time-utils";
 import { SocialRegionMap, generateRegionMapData } from "@/components/social/SocialRegionMap";
-import { SocialNetworkGraph } from "@/components/social/SocialNetworkGraph";
+const SocialNetworkGraph = lazy(() => import("@/components/social/SocialNetworkGraph").then(m => ({ default: m.SocialNetworkGraph })));
 import { ProtocolMentionPanel } from "@/components/social/ProtocolMentionPanel";
 import { MonitoredAccountsPanel } from "@/components/social/MonitoredAccountsPanel";
 import { supabase } from "@/integrations/supabase/client";
@@ -331,10 +331,12 @@ const SocialIntel = () => {
         )}
 
         {activeSection === "network" && (
-          <SocialNetworkGraph
-            analyses={analyses}
-            keywords={activeKeywords}
-          />
+          <Suspense fallback={<div className="flex items-center justify-center h-64 text-muted-foreground"><Loader2 className="animate-spin mr-2" size={16} />Ağ grafiği yükleniyor...</div>}>
+            <SocialNetworkGraph
+              analyses={analyses}
+              keywords={activeKeywords}
+            />
+          </Suspense>
         )}
 
         {activeSection === "feed" && (

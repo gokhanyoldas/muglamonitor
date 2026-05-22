@@ -1,16 +1,14 @@
 // src/components/social/SocialNetworkGraph.tsx
-// Network graph visualization with 2D/3D toggle, sentiment coloring, filters
-// Uses react-force-graph-2d and react-force-graph-3d
+// Custom Canvas-based Network Graph — no external graph dependencies (WebContainer compatible)
+// Implements force-directed layout with sentiment coloring, interactive nodes, filters
 
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
-import ForceGraph2D from "react-force-graph-2d";
-import ForceGraph3D from "react-force-graph-3d";
 import {
-  Network, Eye, Filter, Maximize2, RotateCcw,
+  Network, Filter, Maximize2, RotateCcw,
   ZoomIn, ZoomOut, Layers, AlertTriangle, Users,
-  MapPin, X as XIcon
+  MapPin, X as XIcon, Play, Pause
 } from "lucide-react";
-import { generateNetworkGraphData, NetworkNode, NetworkGraphData } from "@/services/network-graph-service";
+import { generateNetworkGraphData, NetworkNode, NetworkLink, NetworkGraphData } from "@/services/network-graph-service";
 import { cn } from "@/lib/utils";
 
 type FilterType = 'all' | 'districts' | 'last24h' | 'highRisk' | 'influencers';
@@ -31,123 +29,318 @@ interface SocialNetworkGraphProps {
   className?: string;
 }
 
+// Simple force-directed layout simulation
+interface SimNode extends NetworkNode {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  fx?: number;
+  fy?: number;
+}
+
+function initializePositions(nodes: NetworkNode[], width: number, height: number): SimNode[] {
+  return nodes.map((n, i) => ({
+    ...n,
+    x: width / 2 + (Math.random() - 0.5) * width * 0.6,
+    y: height / 2 + (Math.random() - 0.5) * height * 0.6,
+    vx: 0,
+    vy: 0,
+  }));
+}
+
+function simulateForces(
+  nodes: SimNode[],
+  links: NetworkLink[],
+  width: number,
+  height: number,
+  alpha: number
+): void {
+  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+  // Repulsion between nodes
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i];
+      const b = nodes[j];
+      let dx = b.x - a.x;
+      let dy = b.y - a.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const force = (150 * alpha) / (dist * dist);
+      dx *= force / dist;
+      dy *= force / dist;
+      a.vx -= dx;
+      a.vy -= dy;
+      b.vx += dx;
+      b.vy += dy;
+    }
+  }
+
+  // Attraction along links
+  for (const link of links) {
+    const source = nodeMap.get(link.source as string);
+    const target = nodeMap.get(link.target as string);
+    if (!source || !target) continue;
+    let dx = target.x - source.x;
+    let dy = target.y - source.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    const force = (dist - 80) * 0.005 * alpha;
+    dx = (dx / dist) * force;
+    dy = (dy / dist) * force;
+    source.vx += dx;
+    source.vy += dy;
+    target.vx -= dx;
+    target.vy -= dy;
+  }
+
+  // Center gravity
+  for (const node of nodes) {
+    node.vx += (width / 2 - node.x) * 0.001 * alpha;
+    node.vy += (height / 2 - node.y) * 0.001 * alpha;
+  }
+
+  // Apply velocities with damping
+  for (const node of nodes) {
+    if (node.fx !== undefined) { node.x = node.fx; node.vx = 0; }
+    else {
+      node.vx *= 0.6;
+      node.x += node.vx;
+      node.x = Math.max(30, Math.min(width - 30, node.x));
+    }
+    if (node.fy !== undefined) { node.y = node.fy; node.vy = 0; }
+    else {
+      node.vy *= 0.6;
+      node.y += node.vy;
+      node.y = Math.max(30, Math.min(height - 30, node.y));
+    }
+  }
+}
+
 export const SocialNetworkGraph = ({ analyses, keywords = [], className }: SocialNetworkGraphProps) => {
-  const [is3D, setIs3D] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [selectedNode, setSelectedNode] = useState<NetworkNode | null>(null);
-  const [hoveredNode, setHoveredNode] = useState<NetworkNode | null>(null);
-  const [graphDimensions, setGraphDimensions] = useState({ width: 800, height: 500 });
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [isSimulating, setIsSimulating] = useState(true);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const fgRef = useRef<any>(null);
+  const simNodesRef = useRef<SimNode[]>([]);
+  const animFrameRef = useRef<number>(0);
+  const alphaRef = useRef(1);
+  const dragRef = useRef<{ nodeId: string | null; isPanning: boolean; lastX: number; lastY: number }>({ nodeId: null, isPanning: false, lastX: 0, lastY: 0 });
 
   // Generate graph data
   const graphData: NetworkGraphData = useMemo(() => {
-    return generateNetworkGraphData(analyses, keywords, { filter: activeFilter, maxNodes: 400 });
+    return generateNetworkGraphData(analyses, keywords, { filter: activeFilter, maxNodes: 300 });
   }, [analyses, keywords, activeFilter]);
 
-  // Resize observer
+  const WIDTH = 900;
+  const HEIGHT = 500;
+
+  // Initialize simulation nodes when data changes
   useEffect(() => {
-    if (!containerRef.current) return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setGraphDimensions({
-          width: entry.contentRect.width,
-          height: Math.max(400, entry.contentRect.height),
-        });
+    simNodesRef.current = initializePositions(graphData.nodes, WIDTH, HEIGHT);
+    alphaRef.current = 1;
+    setIsSimulating(true);
+  }, [graphData.nodes]);
+
+  // Animation loop
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let running = true;
+
+    const draw = () => {
+      if (!running) return;
+
+      // Simulate
+      if (isSimulating && alphaRef.current > 0.01) {
+        simulateForces(simNodesRef.current, graphData.links, WIDTH, HEIGHT, alphaRef.current);
+        alphaRef.current *= 0.995;
+      } else if (alphaRef.current <= 0.01) {
+        setIsSimulating(false);
       }
-    });
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
+
+      // Clear
+      ctx.clearRect(0, 0, WIDTH, HEIGHT);
+      ctx.save();
+      ctx.translate(pan.x, pan.y);
+      ctx.scale(zoom, zoom);
+
+      const nodeMap = new Map(simNodesRef.current.map(n => [n.id, n]));
+
+      // Draw links
+      for (const link of graphData.links) {
+        const source = nodeMap.get(link.source as string);
+        const target = nodeMap.get(link.target as string);
+        if (!source || !target) continue;
+
+        ctx.beginPath();
+        ctx.moveTo(source.x, source.y);
+        ctx.lineTo(target.x, target.y);
+        ctx.strokeStyle = `rgba(255,255,255,${0.08 + (link.value || 1) * 0.03})`;
+        ctx.lineWidth = Math.min(2, 0.5 + (link.value || 1) * 0.3);
+        ctx.stroke();
+      }
+
+      // Draw nodes
+      for (const node of simNodesRef.current) {
+        const size = Math.max(4, node.val * 0.8);
+        const isSelected = selectedNode?.id === node.id;
+        const isHovered = hoveredNode === node.id;
+
+        // Glow
+        if (isSelected || isHovered) {
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, size + 6, 0, Math.PI * 2);
+          ctx.fillStyle = `${node.color}33`;
+          ctx.fill();
+        }
+
+        // Node circle
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, size, 0, Math.PI * 2);
+        ctx.fillStyle = node.color;
+        ctx.fill();
+
+        // Border
+        if (isSelected) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        } else if (isHovered) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+
+        // Label for important nodes
+        if (size > 8 || isHovered || isSelected) {
+          const label = node.name.length > 14 ? node.name.slice(0, 12) + '…' : node.name;
+          ctx.font = '9px Inter, system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = 'rgba(255,255,255,0.85)';
+          ctx.fillText(label, node.x, node.y + size + 12);
+        }
+
+        // Type indicator
+        if (node.type === 'district') {
+          ctx.beginPath();
+          ctx.arc(node.x + size * 0.7, node.y - size * 0.7, 2.5, 0, Math.PI * 2);
+          ctx.fillStyle = '#60a5fa';
+          ctx.fill();
+        } else if (node.type === 'institution') {
+          ctx.beginPath();
+          ctx.arc(node.x + size * 0.7, node.y - size * 0.7, 2.5, 0, Math.PI * 2);
+          ctx.fillStyle = '#f59e0b';
+          ctx.fill();
+        }
+      }
+
+      ctx.restore();
+      animFrameRef.current = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () => {
+      running = false;
+      cancelAnimationFrame(animFrameRef.current);
+    };
+  }, [graphData.links, isSimulating, zoom, pan, selectedNode, hoveredNode]);
+
+  // Mouse interaction
+  const getNodeAt = useCallback((clientX: number, clientY: number): SimNode | null => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const x = (clientX - rect.left - pan.x) / zoom;
+    const y = (clientY - rect.top - pan.y) / zoom;
+
+    for (const node of simNodesRef.current) {
+      const size = Math.max(4, node.val * 0.8);
+      const dx = node.x - x;
+      const dy = node.y - y;
+      if (dx * dx + dy * dy < (size + 4) * (size + 4)) {
+        return node;
+      }
+    }
+    return null;
+  }, [zoom, pan]);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    const node = getNodeAt(e.clientX, e.clientY);
+    if (node) {
+      dragRef.current = { nodeId: node.id, isPanning: false, lastX: e.clientX, lastY: e.clientY };
+      node.fx = node.x;
+      node.fy = node.y;
+    } else {
+      dragRef.current = { nodeId: null, isPanning: true, lastX: e.clientX, lastY: e.clientY };
+    }
+  }, [getNodeAt]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const drag = dragRef.current;
+    if (drag.nodeId) {
+      const node = simNodesRef.current.find(n => n.id === drag.nodeId);
+      if (node) {
+        const dx = (e.clientX - drag.lastX) / zoom;
+        const dy = (e.clientY - drag.lastY) / zoom;
+        node.fx = (node.fx || node.x) + dx;
+        node.fy = (node.fy || node.y) + dy;
+        node.x = node.fx;
+        node.y = node.fy;
+        drag.lastX = e.clientX;
+        drag.lastY = e.clientY;
+        alphaRef.current = Math.max(alphaRef.current, 0.3);
+        setIsSimulating(true);
+      }
+    } else if (drag.isPanning) {
+      setPan(p => ({
+        x: p.x + (e.clientX - drag.lastX),
+        y: p.y + (e.clientY - drag.lastY),
+      }));
+      drag.lastX = e.clientX;
+      drag.lastY = e.clientY;
+    } else {
+      const node = getNodeAt(e.clientX, e.clientY);
+      setHoveredNode(node?.id || null);
+    }
+  }, [getNodeAt, zoom]);
+
+  const handleMouseUp = useCallback(() => {
+    if (dragRef.current.nodeId) {
+      const node = simNodesRef.current.find(n => n.id === dragRef.current.nodeId);
+      if (node) {
+        delete node.fx;
+        delete node.fy;
+      }
+    }
+    dragRef.current = { nodeId: null, isPanning: false, lastX: 0, lastY: 0 };
   }, []);
 
-  // Node paint (2D)
-  const paintNode = useCallback((node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
-    const n = node as NetworkNode;
-    const size = n.val || 5;
-    const isSelected = selectedNode?.id === n.id;
-    const isHovered = hoveredNode?.id === n.id;
-
-    // Glow effect
-    if (isSelected || isHovered) {
-      ctx.beginPath();
-      ctx.arc(node.x!, node.y!, size + 4, 0, 2 * Math.PI);
-      ctx.fillStyle = `${n.color}44`;
-      ctx.fill();
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    const node = getNodeAt(e.clientX, e.clientY);
+    if (node) {
+      setSelectedNode(node);
     }
+  }, [getNodeAt]);
 
-    // Main circle
-    ctx.beginPath();
-    ctx.arc(node.x!, node.y!, size, 0, 2 * Math.PI);
-    ctx.fillStyle = n.color;
-    ctx.fill();
-
-    // Border
-    ctx.strokeStyle = isSelected ? '#fff' : `${n.color}88`;
-    ctx.lineWidth = isSelected ? 2 : 0.5;
-    ctx.stroke();
-
-    // Label (only at sufficient zoom)
-    if (globalScale > 1.2 || size > 10 || isHovered) {
-      const label = n.name.length > 16 ? n.name.slice(0, 14) + '…' : n.name;
-      const fontSize = Math.max(8, 10 / globalScale);
-      ctx.font = `${fontSize}px Inter, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.fillText(label, node.x!, node.y! + size + fontSize + 2);
-    }
-
-    // Type indicator icon (small shape)
-    if (n.type === 'district') {
-      ctx.beginPath();
-      ctx.arc(node.x! + size * 0.6, node.y! - size * 0.6, 3, 0, 2 * Math.PI);
-      ctx.fillStyle = '#60a5fa';
-      ctx.fill();
-    }
-  }, [selectedNode, hoveredNode]);
-
-  // Link paint
-  const paintLink = useCallback((link: any, ctx: CanvasRenderingContext2D) => {
-    const gradient = ctx.createLinearGradient(
-      link.source.x, link.source.y,
-      link.target.x, link.target.y
-    );
-    gradient.addColorStop(0, `${link.source.color || '#666'}66`);
-    gradient.addColorStop(1, `${link.target.color || '#666'}66`);
-
-    ctx.beginPath();
-    ctx.moveTo(link.source.x, link.source.y);
-    ctx.lineTo(link.target.x, link.target.y);
-    ctx.strokeStyle = gradient;
-    ctx.lineWidth = Math.max(0.5, (link.value || 1) * 0.5);
-    ctx.stroke();
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const factor = e.deltaY > 0 ? 0.9 : 1.1;
+    setZoom(z => Math.max(0.3, Math.min(5, z * factor)));
   }, []);
-
-  // Node click handler
-  const handleNodeClick = useCallback((node: any) => {
-    setSelectedNode(node as NetworkNode);
-    // Center camera on node
-    if (fgRef.current) {
-      if (is3D) {
-        fgRef.current.cameraPosition(
-          { x: node.x, y: node.y, z: 200 },
-          node,
-          1000
-        );
-      } else {
-        fgRef.current.centerAt(node.x, node.y, 500);
-        fgRef.current.zoom(3, 500);
-      }
-    }
-  }, [is3D]);
 
   // Controls
-  const handleZoomIn = () => fgRef.current?.zoom(fgRef.current.zoom() * 1.5, 300);
-  const handleZoomOut = () => fgRef.current?.zoom(fgRef.current.zoom() * 0.7, 300);
-  const handleReset = () => {
-    fgRef.current?.zoomToFit(400, 50);
-    setSelectedNode(null);
-  };
+  const handleZoomIn = () => setZoom(z => Math.min(5, z * 1.3));
+  const handleZoomOut = () => setZoom(z => Math.max(0.3, z * 0.7));
+  const handleReset = () => { setZoom(1); setPan({ x: 0, y: 0 }); setSelectedNode(null); alphaRef.current = 1; setIsSimulating(true); };
+  const toggleSim = () => { if (!isSimulating) { alphaRef.current = 0.5; } setIsSimulating(!isSimulating); };
 
   const filters: Array<{ id: FilterType; label: string; icon: any }> = [
     { id: 'all', label: 'Tümü', icon: Layers },
@@ -166,28 +359,11 @@ export const SocialNetworkGraph = ({ analyses, keywords = [], className }: Socia
           <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/20 text-primary border border-primary/30">
             {graphData.stats.totalNodes} Node • {graphData.stats.totalLinks} Edge
           </span>
-        </div>
-
-        {/* 2D/3D Toggle */}
-        <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5 border border-white/10">
-          <button
-            onClick={() => setIs3D(false)}
-            className={cn(
-              "px-2.5 py-1 text-[10px] font-mono rounded transition-all",
-              !is3D ? "bg-primary/30 text-primary border border-primary/40" : "text-white/60 hover:text-white"
-            )}
-          >
-            2D
-          </button>
-          <button
-            onClick={() => setIs3D(true)}
-            className={cn(
-              "px-2.5 py-1 text-[10px] font-mono rounded transition-all",
-              is3D ? "bg-primary/30 text-primary border border-primary/40" : "text-white/60 hover:text-white"
-            )}
-          >
-            3D
-          </button>
+          {isSimulating && (
+            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 animate-pulse">
+              SİMÜLASYON
+            </span>
+          )}
         </div>
       </div>
 
@@ -208,22 +384,13 @@ export const SocialNetworkGraph = ({ analyses, keywords = [], className }: Socia
             {f.label}
           </button>
         ))}
-
-        {/* Stats chips */}
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-[9px] font-mono text-red-400">
-            ⚠ {graphData.stats.highRiskCount} risk
-          </span>
-          <span className="text-[9px] font-mono text-blue-400">
-            ★ {graphData.stats.influencerCount} influencer
-          </span>
-          <span className="text-[9px] font-mono text-white/40">
-            Ort. {graphData.stats.avgConnections} bağlantı
-          </span>
+          <span className="text-[9px] font-mono text-red-400">⚠ {graphData.stats.highRiskCount} risk</span>
+          <span className="text-[9px] font-mono text-blue-400">★ {graphData.stats.influencerCount} influencer</span>
         </div>
       </div>
 
-      {/* Graph Container */}
+      {/* Graph Canvas */}
       <div ref={containerRef} className="relative w-full" style={{ height: '500px' }}>
         {graphData.nodes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-white/40">
@@ -231,43 +398,18 @@ export const SocialNetworkGraph = ({ analyses, keywords = [], className }: Socia
             <p className="text-sm">Ağ verisi oluşturulamadı</p>
             <p className="text-xs mt-1">Sosyal medya verisi toplandıktan sonra ağ görselleştirilir</p>
           </div>
-        ) : !is3D ? (
-          <ForceGraph2D
-            ref={fgRef}
-            graphData={graphData}
-            width={graphDimensions.width}
-            height={500}
-            nodeCanvasObject={paintNode}
-            nodePointerAreaPaint={(node: any, color: string, ctx: CanvasRenderingContext2D) => {
-              ctx.beginPath();
-              ctx.arc(node.x!, node.y!, (node as NetworkNode).val + 3, 0, 2 * Math.PI);
-              ctx.fillStyle = color;
-              ctx.fill();
-            }}
-            linkCanvasObject={paintLink}
-            onNodeClick={handleNodeClick}
-            onNodeHover={(node: any) => setHoveredNode(node as NetworkNode | null)}
-            cooldownTicks={100}
-            d3AlphaDecay={0.02}
-            d3VelocityDecay={0.3}
-            enableNodeDrag={true}
-            enableZoomInteraction={true}
-            backgroundColor="transparent"
-          />
         ) : (
-          <ForceGraph3D
-            ref={fgRef}
-            graphData={graphData}
-            width={graphDimensions.width}
-            height={500}
-            nodeColor={(node: any) => (node as NetworkNode).color}
-            nodeVal={(node: any) => (node as NetworkNode).val}
-            nodeLabel={(node: any) => `${(node as NetworkNode).name} (${(node as NetworkNode).mentions} mention)`}
-            linkColor={() => 'rgba(255,255,255,0.15)'}
-            linkWidth={(link: any) => Math.max(0.3, (link.value || 1) * 0.3)}
-            onNodeClick={handleNodeClick}
-            backgroundColor="rgba(0,0,0,0)"
-            enableNodeDrag={true}
+          <canvas
+            ref={canvasRef}
+            width={WIDTH}
+            height={HEIGHT}
+            className="w-full h-full cursor-grab active:cursor-grabbing"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onClick={handleClick}
+            onWheel={handleWheel}
           />
         )}
 
@@ -282,8 +424,8 @@ export const SocialNetworkGraph = ({ analyses, keywords = [], className }: Socia
           <button onClick={handleReset} className="p-1.5 rounded bg-black/60 border border-white/10 text-white/70 hover:text-white hover:bg-black/80 transition-all">
             <RotateCcw size={14} />
           </button>
-          <button onClick={() => fgRef.current?.zoomToFit(400, 50)} className="p-1.5 rounded bg-black/60 border border-white/10 text-white/70 hover:text-white hover:bg-black/80 transition-all">
-            <Maximize2 size={14} />
+          <button onClick={toggleSim} className="p-1.5 rounded bg-black/60 border border-white/10 text-white/70 hover:text-white hover:bg-black/80 transition-all">
+            {isSimulating ? <Pause size={14} /> : <Play size={14} />}
           </button>
         </div>
 
@@ -301,37 +443,21 @@ export const SocialNetworkGraph = ({ analyses, keywords = [], className }: Socia
             </div>
           ))}
           <div className="border-t border-white/10 mt-1 pt-1">
-            {[
-              { shape: '●', label: 'İlçe', color: '#60a5fa' },
-              { shape: '◆', label: 'Kaynak', color: '#4ade80' },
-              { shape: '▲', label: 'Anahtar Kelime', color: '#a78bfa' },
-            ].map(l => (
-              <div key={l.label} className="flex items-center gap-1.5">
-                <span className="text-[9px]" style={{ color: l.color }}>{l.shape}</span>
-                <span className="text-[9px] text-white/70">{l.label}</span>
-              </div>
-            ))}
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-blue-400" />
+              <span className="text-[9px] text-white/70">İlçe</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-amber-400" />
+              <span className="text-[9px] text-white/70">Kurum</span>
+            </div>
           </div>
         </div>
-
-        {/* Cluster info */}
-        {graphData.clusters.length > 0 && (
-          <div className="absolute top-3 right-3 flex flex-col gap-0.5 bg-black/70 backdrop-blur-sm rounded-lg px-2.5 py-2 border border-white/10">
-            <span className="text-[9px] font-mono text-white/50 mb-0.5">KÜMELER</span>
-            {graphData.clusters.slice(0, 6).map(c => (
-              <div key={c.id} className="flex items-center gap-1.5 text-[9px] text-white/70">
-                <div className="w-2 h-2 rounded-sm" style={{ background: c.color }} />
-                <span>{c.name}</span>
-                <span className="text-white/40 ml-auto">{c.nodeCount}</span>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Selected Node Detail Panel */}
       {selectedNode && (
-        <div className="absolute top-0 right-0 w-72 h-full bg-black/90 backdrop-blur-xl border-l border-white/10 overflow-y-auto z-20 animate-in slide-in-from-right-5 duration-200">
+        <div className="absolute top-0 right-0 w-72 h-full bg-black/90 backdrop-blur-xl border-l border-white/10 overflow-y-auto z-20">
           <div className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-semibold text-white truncate">{selectedNode.name}</h4>
@@ -341,7 +467,6 @@ export const SocialNetworkGraph = ({ analyses, keywords = [], className }: Socia
             </div>
 
             <div className="space-y-3">
-              {/* Node info */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="bg-white/5 rounded-lg p-2 border border-white/10">
                   <div className="text-[9px] font-mono text-white/40">Tür</div>
@@ -363,7 +488,6 @@ export const SocialNetworkGraph = ({ analyses, keywords = [], className }: Socia
                 </div>
               </div>
 
-              {/* Related posts */}
               {selectedNode.relatedPosts && selectedNode.relatedPosts.length > 0 && (
                 <div>
                   <div className="text-[10px] font-mono text-white/50 uppercase mb-2">İlgili İçerikler</div>
