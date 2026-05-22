@@ -22,6 +22,7 @@ import { WeeklyComparison, generateComparisonData } from "@/components/social/We
 import { LiveFeedIndicator } from "@/components/social/LiveFeedIndicator";
 import { relativeTime, detectRegion } from "@/lib/time-utils";
 import { SocialRegionMap, generateRegionMapData } from "@/components/social/SocialRegionMap";
+import { SocialNetworkGraph } from "@/components/social/SocialNetworkGraph";
 import { ProtocolMentionPanel } from "@/components/social/ProtocolMentionPanel";
 import { MonitoredAccountsPanel } from "@/components/social/MonitoredAccountsPanel";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,7 +58,7 @@ const platformIcons: Record<string, React.ReactNode> = {
 
 const SocialIntel = () => {
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState<"feed" | "osint">("feed");
+  const [activeSection, setActiveSection] = useState<"feed" | "osint" | "network">("feed");
   const [keywords, setKeywords] = useState<string[]>(["Muğla", "Bodrum", "Fethiye", "Marmaris"]);
   const [analyses, setAnalyses] = useState<AnalysisItem[]>([]);
   const [isCollecting, setIsCollecting] = useState(false);
@@ -290,6 +291,16 @@ const SocialIntel = () => {
             >
               <Eye size={11} />OSINT Merkezi
             </button>
+            <button
+              onClick={() => setActiveSection("network")}
+              className={`flex items-center gap-1.5 text-[9px] font-mono px-2.5 py-1.5 rounded border transition-colors ${
+                activeSection === "network"
+                  ? "bg-violet-600/20 text-violet-300 border-violet-500/40"
+                  : "text-muted-foreground border-border hover:text-foreground"
+              }`}
+            >
+              <Globe size={11} />Ağ Analizi
+            </button>
           </div>
 
           <div className="flex items-center gap-2">
@@ -317,6 +328,13 @@ const SocialIntel = () => {
 
         {activeSection === "osint" && (
           <OSINTCenter />
+        )}
+
+        {activeSection === "network" && (
+          <SocialNetworkGraph
+            analyses={analyses}
+            keywords={activeKeywords}
+          />
         )}
 
         {activeSection === "feed" && (
