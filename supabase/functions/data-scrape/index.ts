@@ -233,30 +233,66 @@ async function fetchNews() {
 //  TRENDS  —  Google News RSS topic-based
 // ─────────────────────────────────────────────
 async function fetchTrends() {
-  const topics = ['turizm Muğla', 'yangın Muğla', 'trafik Muğla', 'fiyat Bodrum'];
-  const counts: Record<string, number> = {};
-  const trendItems: any[] = [];
+  const keywords = [
+    'Muğla', 'Bodrum', 'Fethiye', 'Marmaris', 'Milas',
+    'Datça', 'Dalaman', 'Köyceğiz', 'Ortaca', 'Menteşe',
+  ];
 
-  for (const t of topics.slice(0, 3)) {
-    try {
-      const url = `https://news.google.com/rss/search?q=${encodeURIComponent(t)}&hl=tr&gl=TR&ceid=TR:tr`;
-      const res = await fetch(url, { headers: { 'User-Agent': 'MuglaMonitor/1.0' } });
-      if (!res.ok) continue;
-      const text = await res.text();
-      const count = (text.match(/<item>/g) ?? []).length;
-      counts[t] = count;
-      // Get latest title for this trend
-      const titleMatch = text.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/);
-      if (titleMatch) trendItems.push({ keyword: t, headline: titleMatch[1], count });
-    } catch (_) { /* skip */ }
+  const results: any[] = [];
+
+  // Fetch Google News RSS for each keyword in parallel (batches of 6)
+  const batchSize = 6;
+  for (let i = 0; i < keywords.length; i += batchSize) {
+    const batch = keywords.slice(i, i + batchSize);
+    const promises = batch.map(async (keyword) => {
+      try {
+        const url = `https://news.google.com/rss/search?q=${encodeURIComponent(keyword)}&hl=tr&gl=TR&ceid=TR:tr`;
+        const res = await fetch(url, {
+          headers: { 'User-Agent': 'MuglaMonitor/1.0' },
+          signal: AbortSignal.timeout(6000),
+        });
+        if (!res.ok) return null;
+        const text = await res.text();
+
+        // Count items = mentions proxy
+        const items = text.match(/<item>/g) ?? [];
+        const mentions = items.length;
+
+        // Extract headlines for sentiment
+        const titleMatches = [...text.matchAll(/<title><!\[CDATA\[(.*?)\]\]><\/title>/g)];
+        const headlines = titleMatches.slice(0, 5).map(m => m[1]);
+
+        // Turkish keyword-based sentiment
+        const positiveWords = ['açıldı','başladı','festival','güzel','rekor','artış','yatırım','turist','ödül','başarı','destek','proje','gelişme'];
+        const negativeWords = ['yangın','kaza','deprem','sel','ölüm','gözaltı','kaçak','sorun','tehlike','uyarı','afet','ihmal','kirlilik'];
+
+        const allText = headlines.join(' ').toLowerCase();
+        const posCount = positiveWords.filter(w => allText.includes(w)).length;
+        const negCount = negativeWords.filter(w => allText.includes(w)).length;
+        const sentiment = posCount > negCount ? 'positive' : negCount > posCount ? 'negative' : 'neutral';
+
+        const avgMentions = 12;
+        const change = mentions > 0 ? Math.round(((mentions - avgMentions) / avgMentions) * 100) : 0;
+
+        return {
+          keyword: `#${keyword}`,
+          mentions,
+          change: Math.max(-50, Math.min(100, change)),
+          sentiment,
+          headline: headlines[0] || null,
+        };
+      } catch (_) { return null; }
+    });
+
+    const batchResults = await Promise.all(promises);
+    results.push(...batchResults.filter(Boolean));
   }
 
-  return {
-    trending_topics: trendItems,
-    keyword_counts: counts,
-    source: 'Google News RSS',
-    updated_at: new Date().toISOString(),
-  };
+  // Sort by mentions descending
+  results.sort((a: any, b: any) => b.mentions - a.mentions);
+
+  // Return as array (frontend expects Array.isArray check)
+  return results;
 }
 
 // ─────────────────────────────────────────────

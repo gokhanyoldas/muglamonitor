@@ -58,7 +58,7 @@ export const TrendTopicsSection = () => {
     <div className="space-y-3">
       <DashboardPanel title="Trend Konular" icon={<TrendingUp size={14} />} badge={isLive ? "CANLI" : "ÖNBELLEK"} badgeVariant={isLive ? "live" : "info"} count={trends.length}>
         <div className="text-[9px] font-mono text-muted-foreground mb-2 flex items-center gap-2">
-          <span>Kaynak: Firecrawl Web Arama</span>
+          <span>Kaynak: Google News RSS</span>
           <span className="w-1 h-1 rounded-full bg-muted-foreground" />
           <span>Her 15 dk güncellenir</span>
           {lastUpdate && (
