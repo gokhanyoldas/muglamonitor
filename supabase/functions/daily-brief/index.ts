@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
-const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 const RESEND_URL = "https://api.resend.com/emails";
 
 async function gatherContext(supabase: ReturnType<typeof createClient>): Promise<string> {
@@ -59,7 +59,7 @@ ${context}`;
         body: JSON.stringify({
           from: "Muğla Monitör <brief@muglamonitor.com>",
           to: [recipientEmail],
-          subject: `🌅 Muğla'da Bugün — ${new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })}`,
+          subject: `🌅 Muğla'de Bugün — ${new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })}`,
           html: htmlContent,
         }),
       });
