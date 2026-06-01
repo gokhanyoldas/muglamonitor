@@ -11,17 +11,17 @@ async function fetchSocialContext(supabase: ReturnType<typeof createClient>): Pr
   const { data } = await supabase.from("social_analyses")
     .select("title, sentiment, summary, source, created_at")
     .order("created_at", { ascending: false }).limit(20);
-  if (!data?.length) return "Son 24 saatte analiz edilecek sosyal medya verisi bulunamadı.";
+  if (!data?.length) return "Son 24 saatte analiz edilecek sosyal medya verisi bulunamadi.";
   return data.map((r) => `[${r.source}][${r.sentiment}] ${r.title}: ${r.summary ?? ""}`).join("\n");
 }
 
 function buildPrompt(type: SummaryRequest["type"], context: string): string {
-  const base = `Sen Muğla ili için calışan bölgesel istihbarat asistanısına.\nGörevin kısa, net ve bilgilendirici Türkçe özetler üretmek.\nMaksimum 3 madde halinde, her madde 1 cümle, toplam 60-80 kelime.`;
+  const base = `Sen Mugla ili icin calisan bir bolgesel istihbarat asistanisin.\nGorev: kisa, net ve bilgilendirici Turkce ozetler uretmek.\nMaksimum 3 madde halinde, her madde 1 cumle, toplam 60-80 kelime.`;
   const prompts = {
-    daily: `${base}\n\nAşağıdaki bugünkü Muğla veri akışına dayanarak günlük özet üret:\n\n${context}`,
-    social: `${base}\n\nAşağıdaki sosyal medya analizlerine dayanarak kamuoyu özeti üret:\n\n${context}`,
-    earthquake: `${base}\n\nAşağıdaki deprem verilerine dayanarak risk özeti üret:\n\n${context}`,
-    weather: `${base}\n\nAşağıdaki hava durumu verilerine dayanarak kısa tahmin özeti üret:\n\n${context}`,
+    daily: `${base}\n\nAsagidaki bugunku Mugla veri akisina dayanarak gunluk ozet uret:\n\n${context}`,
+    social: `${base}\n\nAsagidaki sosyal medya analizlerine dayanarak kamuoyu ozeti uret:\n\n${context}`,
+    earthquake: `${base}\n\nAsagidaki deprem verilerine dayanarak risk ozeti uret:\n\n${context}`,
+    weather: `${base}\n\nAsagidaki hava durumu verilerine dayanarak kisa tahmin ozeti uret:\n\n${context}`,
   };
   return prompts[type];
 }
@@ -44,7 +44,7 @@ serve(async (req) => {
     });
     if (!gemRes.ok) { const err = await gemRes.text(); throw new Error(`Gemini API error ${gemRes.status}: ${err}`); }
     const gemData = await gemRes.json();
-    const summary = gemData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "Özet üretilemedi.";
+    const summary = gemData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "Ozet uretilemedi.";
     const today = new Date().toISOString().split("T")[0];
     await supabase.from("ai_summaries").upsert({ type: body.type, summary, generated_at: new Date().toISOString(), date: today }, { onConflict: "type,date" });
     return new Response(JSON.stringify({ type: body.type, summary, generated_at: new Date().toISOString() }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
