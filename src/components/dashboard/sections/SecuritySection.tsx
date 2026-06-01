@@ -116,8 +116,9 @@ export const SecuritySection = () => {
   });
   const { data: liveRoadWorks, isLoading: rwLoading } = useLiveData<any[]>("road_works", { refetchInterval: 15 * 60 * 1000 });
 
-  const newsItems = liveNews && liveNews.length > 0
-    ? liveNews.map((n: any, i: number) => ({
+  const rawNews = liveNews?.items || (Array.isArray(liveNews) ? liveNews : []);
+  const newsItems = rawNews.length > 0
+    ? rawNews.map((n: any, i: number) => ({
         time: new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", hour12: false }),
         text: n.title || n.description || "",
         type: "info" as const,
