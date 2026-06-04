@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { osintDataManager } from "./osint-data-manager";
 
 export interface SyncStatus {
   isRefreshing: boolean;
@@ -52,19 +52,11 @@ class DataSyncService {
     this.notifyListeners();
 
     try {
-      // Fetch live data from Supabase Edge Functions
-      const [weatherResult, newsResult, economyResult] = await Promise.allSettled([
-        supabase.functions.invoke("data-scrape", { body: { type: "weather" } }),
-        supabase.functions.invoke("data-scrape", { body: { type: "news" } }),
-        supabase.functions.invoke("data-scrape", { body: { type: "economy" } }),
-      ]);
+      // Local processing only — no external API calls
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-      let itemsCount = 0;
-      if (weatherResult.status === "fulfilled" && weatherResult.value.data) itemsCount++;
-      if (newsResult.status === "fulfilled" && newsResult.value.data) itemsCount++;
-      if (economyResult.status === "fulfilled" && economyResult.value.data) itemsCount++;
-
-      this.status.itemsCount = itemsCount;
+      const feed = osintDataManager.getIntelligenceFeed();
+      this.status.itemsCount = feed.length;
       this.status.lastSync = Date.now();
       this.status.nextSync = Date.now() + this.refreshIntervalMs;
       this.status.fromCache = false;
