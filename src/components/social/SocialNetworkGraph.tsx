@@ -360,8 +360,8 @@ export const SocialNetworkGraph = ({ analyses, keywords = [], className }: Socia
             {graphData.stats.totalNodes} Node • {graphData.stats.totalLinks} Edge
           </span>
           {isSimulating && (
-            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 animate-pulse">
-              SİMÜLASYON
+            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 animate-pulse">
+              Yerleştiriliyor...
             </span>
           )}
         </div>
