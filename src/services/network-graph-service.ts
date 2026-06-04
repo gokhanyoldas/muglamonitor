@@ -140,7 +140,40 @@ export function generateNetworkGraphData(
   // Process each analysis item
   for (const item of analyses) {
     const contentLower = item.content.toLowerCase();
-    const sentScore = item.sentiment === 'positive' ? item.sentiment_score : item.sentiment === 'negative' ? -item.sentiment_score : 0;
+    // --- Turkish NLP Sentiment Fallback ---
+    // Muğla ili 13 ilçe bazlı duygu analizi: sentiment_score=0 ise içerikten hesapla
+    let _effSentiment = item.sentiment;
+    let _effScore = item.sentiment_score;
+    if (!_effScore || _effScore === 0) {
+      const _txt = (item.content + ' ' + (item.summary || '')).toLowerCase();
+      const _negWords = [
+        'yangın','kaza','deprem','sel','ölüm','hayatını kaybetti','gözaltı','kaçak','sorun',
+        'tehlike','uyarı','afet','ihmal','kirlilik','suç','tutuklama','yaralı','bomba',
+        'patlama','hasar','zarar','kayıp','şiddet','saldırı','itfaiye','göçük','mahsur',
+        'duman','tahliye','faciası','trafik kazası','uçurum','boğulma','zehirlenme',
+        'acil','kriz','yasak','ihlal','tartışma','protesto','eylem','grev'
+      ];
+      const _posWords = [
+        'açıldı','başladı','festival','güzel','rekor','artış','yatırım','turist','ödül',
+        'başarı','destek','proje','gelişme','kutlama','coşku','sevinç','müjde','onay',
+        'hizmet','açılış','büyüme','tamamlandı','kazandı','tamamlama','canlandı',
+        'ziyaretçi','ihracat','kalkınma','faaliyete','hibe','teşvik','genişledi',
+        'imzalandı','anlaşma','ortaklık','refah','memnun','olumlu','güvenli'
+      ];
+      const _negCount = _negWords.filter(w => _txt.includes(w)).length;
+      const _posCount = _posWords.filter(w => _txt.includes(w)).length;
+      if (_negCount > _posCount) {
+        _effSentiment = 'negative';
+        _effScore = Math.min(0.95, 0.45 + _negCount * 0.12);
+      } else if (_posCount > _negCount) {
+        _effSentiment = 'positive';
+        _effScore = Math.min(0.95, 0.50 + _posCount * 0.10);
+      } else {
+        _effSentiment = 'neutral';
+        _effScore = 0.35;
+      }
+    }
+    const sentScore = _effSentiment === 'positive' ? _effScore : _effSentiment === 'negative' ? -_effScore : 0;
     const postRef = { content: item.content.slice(0, 120), source: item.source_author, url: item.source_url, sentiment: item.sentiment };
 
     // 1. Add source/author node
@@ -213,12 +246,30 @@ export function generateNetworkGraphData(
     }
 
     // 7. Detect institutions/persons from known patterns
+    // Muğla ili kurumları — büyükşehir + 13 ilçe belediyesi + kamu kurumları
     const institutionPatterns = [
-      { pattern: /belediye|büyükşehir/i, name: 'Muğla Büyükşehir Belediyesi', type: 'institution' as const },
-      { pattern: /valilik/i, name: 'Muğla Valiliği', type: 'institution' as const },
-      { pattern: /üniversite|mkü/i, name: 'Muğla Sıtkı Koçman Üniversitesi', type: 'institution' as const },
+      { pattern: /büyükşehir belediyesi|muğla belediyesi/i, name: 'Muğla Büyükşehir Belediyesi', type: 'institution' as const },
+      { pattern: /bodrum belediyesi/i, name: 'Bodrum Belediyesi', type: 'institution' as const },
+      { pattern: /fethiye belediyesi/i, name: 'Fethiye Belediyesi', type: 'institution' as const },
+      { pattern: /marmaris belediyesi/i, name: 'Marmaris Belediyesi', type: 'institution' as const },
+      { pattern: /milas belediyesi/i, name: 'Milas Belediyesi', type: 'institution' as const },
+      { pattern: /datça belediyesi/i, name: 'Datça Belediyesi', type: 'institution' as const },
+      { pattern: /dalaman belediyesi/i, name: 'Dalaman Belediyesi', type: 'institution' as const },
+      { pattern: /köyceğiz belediyesi/i, name: 'Köyceğiz Belediyesi', type: 'institution' as const },
+      { pattern: /ortaca belediyesi/i, name: 'Ortaca Belediyesi', type: 'institution' as const },
+      { pattern: /menteşe belediyesi/i, name: 'Menteşe Belediyesi', type: 'institution' as const },
+      { pattern: /seydikemer belediyesi/i, name: 'Seydikemer Belediyesi', type: 'institution' as const },
+      { pattern: /ula belediyesi/i, name: 'Ula Belediyesi', type: 'institution' as const },
+      { pattern: /yatağan belediyesi/i, name: 'Yatağan Belediyesi', type: 'institution' as const },
+      { pattern: /kavaklıdere belediyesi/i, name: 'Kavaklıdere Belediyesi', type: 'institution' as const },
+      { pattern: /muğla valiliği|valilik/i, name: 'Muğla Valiliği', type: 'institution' as const },
+      { pattern: /üniversite|mkü|muğla sıtkı/i, name: 'Muğla Sıtkı Koçman Üniversitesi', type: 'institution' as const },
       { pattern: /afad/i, name: 'AFAD Muğla', type: 'institution' as const },
       { pattern: /ticaret odası|mto/i, name: 'Muğla Ticaret Odası', type: 'institution' as const },
+      { pattern: /emniyet müdürlüğü|polis/i, name: 'Muğla Emniyet Müdürlüğü', type: 'institution' as const },
+      { pattern: /jandarma/i, name: 'Jandarma Muğla', type: 'institution' as const },
+      { pattern: /orman bölge|orman müd/i, name: 'Muğla Orman Bölge Müdürlüğü', type: 'institution' as const },
+      { pattern: /sağlık müdürlüğü|il sağlık/i, name: 'Muğla İl Sağlık Müdürlüğü', type: 'institution' as const },
     ];
 
     for (const { pattern, name, type } of institutionPatterns) {
