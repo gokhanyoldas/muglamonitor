@@ -8,10 +8,36 @@ import { corsHeaders } from '../_shared/cors.ts';
 
 const MUGLA_KEYWORDS = ['Muğla', 'Bodrum', 'Fethiye', 'Marmaris', 'Milas', 'Datça', 'Dalaman'];
 
+// Turkish NLP keyword lists for sentiment scoring
+const TR_NEG_WORDS = [
+  'yangın','kaza','deprem','sel','ölüm','gözaltı','kaçak','sorun','tehlike','uyarı',
+  'afet','ihmal','kirlilik','suç','tutuklama','yaralı','bomba','patlama','hasar',
+  'zarar','kayıp','şiddet','saldırı','itfaiye','göçük','mahsur','tahliye','kriz',
+  'yasak','ihlal','tartışma','protesto','grev','boğulma','zehirlenme'
+];
+const TR_POS_WORDS = [
+  'açıldı','başladı','festival','güzel','rekor','artış','yatırım','turist','ödül',
+  'başarı','destek','proje','gelişme','kutlama','coşku','sevinç','müjde','onay',
+  'hizmet','açılış','büyüme','tamamlandı','kazandı','tamamlama','canlandı',
+  'ziyaretçi','ihracat','kalkınma','faaliyete','hibe','teşvik','imzalandı',
+  'anlaşma','ortaklık','refah','memnun','olumlu','güvenli'
+];
+
+function scoreSentimentTR(text: string): { sentiment: string; sentiment_score: number } {
+  const t = text.toLowerCase();
+  const negCount = TR_NEG_WORDS.filter(w => t.includes(w)).length;
+  const posCount = TR_POS_WORDS.filter(w => t.includes(w)).length;
+  if (negCount > posCount) return { sentiment: 'negative', sentiment_score: Math.min(0.95, 0.45 + negCount * 0.12) };
+  if (posCount > negCount) return { sentiment: 'positive', sentiment_score: Math.min(0.95, 0.50 + posCount * 0.10) };
+  return { sentiment: 'neutral', sentiment_score: 0.35 };
+}
+
 interface SocialPost {
   platform: string;
   content: string;
   author: string;
+  sentiment: string;
+  sentiment_score: number;
   url: string;
   published_at: string;
   keywords_matched: string[];
@@ -66,6 +92,7 @@ async function fetchYouTube(keywords: string[]): Promise<SocialPost[]> {
         platform: 'youtube',
         content: `${title}\n${description}`.trim(),
         author: channel,
+        ...scoreSentimentTR(title + ' ' + description),
         url: `https://www.youtube.com/watch?v=${videoId}`,
         published_at: publishedAt,
         keywords_matched: matched.length > 0 ? matched : [keywords[0]],
@@ -113,6 +140,7 @@ async function fetchYouTubeRSS(keywords: string[]): Promise<SocialPost[]> {
           platform: 'youtube',
           content: title,
           author,
+          ...scoreSentimentTR(title),
           url: `https://www.youtube.com/watch?v=${videoId}`,
           published_at: published,
           keywords_matched: matched.length > 0 ? matched : ['Muğla'],
@@ -169,6 +197,7 @@ async function fetchTwitter(keywords: string[]): Promise<SocialPost[]> {
         platform: 'twitter',
         content: tweet.text,
         author: `@${username}`,
+        ...scoreSentimentTR(tweet.text),
         url: `https://x.com/${username}/status/${tweet.id}`,
         published_at: tweet.created_at || '',
         keywords_matched: matched.length > 0 ? matched : [keywords[0]],
@@ -216,6 +245,7 @@ async function fetchFacebook(keywords: string[]): Promise<SocialPost[]> {
         platform: 'facebook',
         content: post.message.slice(0, 1000),
         author: pageId,
+        ...scoreSentimentTR(post.message),
         url: post.permalink_url || '',
         published_at: post.created_time || '',
         keywords_matched: matched.length > 0 ? matched : [keywords[0]],
