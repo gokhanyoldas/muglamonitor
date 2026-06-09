@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - "supabase/functions/**"
-  workflow_dispatch:  # manual trigger button in GitHub UI
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -17,12 +17,14 @@ jobs:
         with:
           version: latest
 
-      - name: Deploy all edge functions
+      - name: Deploy changed edge functions
         run: |
-          supabase functions deploy transport-scrape  --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-          supabase functions deploy data-scrape        --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-          supabase functions deploy ai-summary         --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-          supabase functions deploy municipality-feed  --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-          supabase functions deploy daily-brief        --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+          supabase functions deploy transport-scrape  --project-ref wivooargsmcwbiokpklu
+          supabase functions deploy data-scrape        --project-ref wivooargsmcwbiokpklu
+          supabase functions deploy ai-summary         --project-ref wivooargsmcwbiokpklu
+          supabase functions deploy municipality-feed  --project-ref wivooargsmcwbiokpklu
+          supabase functions deploy daily-brief        --project-ref wivooargsmcwbiokpklu
+          supabase functions deploy social-collect     --project-ref wivooargsmcwbiokpklu
+          supabase functions deploy social-analyze     --project-ref wivooargsmcwbiokpklu
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
