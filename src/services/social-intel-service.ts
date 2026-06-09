@@ -1,4 +1,5 @@
 import { sentimentAnalyzer } from "./sentiment-analyzer";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface SocialPost {
   id: string;
@@ -82,7 +83,7 @@ export interface LocalCollectedItem {
   matched_keywords?: string[];
 }
 
-// Local mock data for Mugla
+// Fallback static data for Mugla — used only when live sources are unavailable
 const MUGLA_LOCAL_DATA: { platform: string; content: string; author: string }[] = [
   { platform: "news", content: "Muğla Büyükşehir Belediyesi yeni ulaşım projesini açıkladı", author: "Muğla Haber" },
   { platform: "news", content: "Bodrum'da turizm sezonu rekor kırıyor — otel doluluk %95 üstü", author: "Bodrum Gazetesi" },
@@ -107,7 +108,7 @@ const MUGLA_LOCAL_DATA: { platform: string; content: string; author: string }[] 
 ];
 
 class SocialIntelService {
-  // Local-only data generation — no Supabase Edge Function calls
+  // Generate items from local fallback data
   generateLocalItems(keywords: string[], platforms: string[] = ["news", "twitter", "reddit", "eksisozluk"]): LocalCollectedItem[] {
     const filtered = MUGLA_LOCAL_DATA.filter((item) => {
       const matchesPlatform = platforms.includes("all") || platforms.includes(item.platform);
@@ -131,9 +132,74 @@ class SocialIntelService {
     }));
   }
 
+  // Fetch live data from Supabase edge functions; fall back to local mock on failure
   async collectData(keywords: string[], platforms: string[] = ["news", "twitter", "reddit", "eksisozluk"]): Promise<LocalCollectedItem[]> {
-    // Simulate delay
-    await new Promise((resolve) => setTimeout(resolve, 1200));
+    try {
+      const [newsResult, socialResult] = await Promise.allSettled([
+        supabase.functions.invoke("data-scrape", { body: { type: "news" } }),
+        supabase.functions.invoke("social-platforms", { body: { keywords: keywords.slice(0, 4) } }),
+      ]);
+
+      const items: LocalCollectedItem[] = [];
+
+      // --- Haber Akışı: RSS news from data-scrape ---
+      if (newsResult.status === "fulfilled" && !newsResult.value.error) {
+        const raw = newsResult.value.data;
+        const data = (raw?.data ?? raw) as Record<string, unknown> | null;
+        const newsItems: Record<string, string>[] = Array.isArray(data?.items)
+          ? (data!.items as Record<string, string>[])
+          : [];
+
+        if ((platforms.includes("all") || platforms.includes("news")) && newsItems.length > 0) {
+          for (const item of newsItems.slice(0, 20)) {
+            items.push({
+              platform: "news",
+              content: item.title || "",
+              description: item.region
+                ? `${item.source} — ${item.region}`
+                : item.source || "",
+              source_author: item.source || "Haber",
+              source_url: item.link || undefined,
+              matched_keywords: keywords.filter((k) =>
+                (item.title || "").toLowerCase().includes(k.toLowerCase())
+              ),
+            });
+          }
+        }
+      }
+
+      // --- Canlı Feed: YouTube / Twitter / Facebook from social-platforms ---
+      if (socialResult.status === "fulfilled" && !socialResult.value.error) {
+        const raw = socialResult.value.data;
+        const data = (raw?.data ?? raw) as Record<string, unknown> | null;
+        const posts: Record<string, string>[] = Array.isArray(data?.posts)
+          ? (data!.posts as Record<string, string>[])
+          : [];
+
+        for (const post of posts) {
+          const plat = post.platform || "web";
+          if (!platforms.includes("all") && !platforms.includes(plat)) continue;
+          items.push({
+            platform: plat,
+            content: post.title || post.content || "",
+            description: post.description || "",
+            source_author: post.author || post.channel || "Sosyal Medya",
+            source_url: post.url || undefined,
+            matched_keywords: keywords.filter((k) =>
+              (post.title || post.content || "").toLowerCase().includes(k.toLowerCase())
+            ),
+          });
+        }
+      }
+
+      // Return live data if we got anything
+      if (items.length > 0) return items;
+    } catch {
+      // Fall through to local fallback
+    }
+
+    // Fallback: simulate slight delay then return static mock
+    await new Promise((resolve) => setTimeout(resolve, 800));
     return this.generateLocalItems(keywords, platforms);
   }
 
@@ -180,9 +246,8 @@ class SocialIntelService {
     alerts: LocalAlertItem[];
     trend_summary: LocalTrendSummary;
   }> {
-    const platforms = platform === "all" ? ["news", "twitter", "reddit", "eksisozluk"] : [platform];
+    const platforms = platform === "all" ? ["news", "twitter", "reddit", "eksisozluk", "youtube", "facebook"] : [platform];
 
-    // Collect locally
     const collectedItems = await this.collectData(keywords, platforms);
 
     if (collectedItems.length === 0) {
@@ -194,7 +259,6 @@ class SocialIntelService {
       };
     }
 
-    // Analyze sentiment locally
     const texts = collectedItems.map((item) => item.content);
     const analysisResult = await this.analyzeSentiment(texts);
 
@@ -206,109 +270,28 @@ class SocialIntelService {
         sentiment: sentimentResult?.sentiment || "neutral",
         sentiment_score: sentimentResult?.confidence || 0.5,
         source_author: item.source_author,
-        engagement_count: Math.floor(Math.random() * 500),
-        summary: this.generateItemSummary(sentimentResult?.sentiment || "neutral"),
+        engagement_count: Math.floor(Math.random() * 150) + 10,
+        summary: item.description,
         source_url: item.source_url,
       };
     });
 
-    const alerts = this.generateAlerts(analyses, analysisResult.summary);
-    const trend_summary = this.buildTrendSummary(analyses, analysisResult.summary, keywords);
-
-    return { collectedItems, analyses, alerts, trend_summary };
-  }
-
-  private generateItemSummary(sentiment: string): string {
-    switch (sentiment) {
-      case "positive":
-        return "Olumlu gelişme tespit edildi";
-      case "negative":
-        return "Olumsuz içerik, dikkat gerekli";
-      default:
-        return "Bilgi niteliğinde içerik";
-    }
-  }
-
-  private generateAlerts(analyses: LocalAnalysisItem[], summary?: SentimentSummary): LocalAlertItem[] {
     const alerts: LocalAlertItem[] = [];
-
-    if (summary) {
-      if (summary.negative_ratio > 0.5) {
-        alerts.push({
-          label: "Yüksek Negatif Duygu",
-          value: `%${Math.round(summary.negative_ratio * 100)}`,
-          severity: "warning",
-        });
-      }
-    }
-
-    const criticalKeywords = ["yangın", "deprem", "sel", "kaza", "ölüm", "terör"];
-    const hasCritical = analyses.some((a) =>
-      criticalKeywords.some((kw) => a.content.toLowerCase().includes(kw))
-    );
-    if (hasCritical) {
+    const negativeItems = analyses.filter((a) => a.sentiment === "negative" && a.sentiment_score > 0.7);
+    if (negativeItems.length > 3) {
       alerts.push({
-        label: "Kritik İçerik Tespit Edildi",
-        value: "Acil dikkat gerekebilir",
-        severity: "critical",
+        label: "Yüksek Negatif Duygu",
+        value: `${negativeItems.length} içerikte yüksek negatif duygu tespit edildi`,
+        severity: "warning",
       });
     }
 
-    return alerts;
-  }
-
-  private buildTrendSummary(
-    analyses: LocalAnalysisItem[],
-    summary: SentimentSummary | null | undefined,
-    keywords: string[]
-  ): LocalTrendSummary {
-    const total = analyses.length || 1;
-    const positiveRatio = summary?.positive_ratio || analyses.filter((a) => a.sentiment === "positive").length / total;
-    const negativeRatio = summary?.negative_ratio || analyses.filter((a) => a.sentiment === "negative").length / total;
-    const neutralRatio = summary?.neutral_ratio || analyses.filter((a) => a.sentiment === "neutral").length / total;
-    const overallSentiment = summary?.overall_sentiment || "neutral";
-
-    const topTopics = this.extractTopics(analyses, keywords);
-
     return {
-      mention_count: analyses.length,
-      positive_ratio: positiveRatio,
-      negative_ratio: negativeRatio,
-      neutral_ratio: neutralRatio,
-      top_topics: topTopics,
-      overall_sentiment: overallSentiment,
-      key_insights: this.generateInsights(analyses.length, overallSentiment, topTopics),
+      collectedItems,
+      analyses,
+      alerts,
+      trend_summary: this.buildTrendSummary(analyses),
     };
-  }
-
-  private extractTopics(analyses: LocalAnalysisItem[], keywords: string[]): string[] {
-    const freq: Record<string, number> = {};
-    for (const a of analyses) {
-      for (const kw of keywords) {
-        if (a.content.toLowerCase().includes(kw.toLowerCase())) {
-          freq[kw] = (freq[kw] || 0) + 1;
-        }
-      }
-    }
-    return Object.entries(freq)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([kw]) => kw);
-  }
-
-  private generateInsights(total: number, sentiment: string, topics: string[]): string {
-    let insight = `${total} adet yerel içerik analiz edildi (client-side keyword analizi). `;
-    if (sentiment === "positive") {
-      insight += "Genel duygu OLUMLU. Bölgede pozitif gelişmeler ön planda. ";
-    } else if (sentiment === "negative") {
-      insight += "Genel duygu OLUMSUZ. Dikkat gerektiren konular mevcut. ";
-    } else {
-      insight += "Genel duygu NÖTR. Dengeli bir haber dağılımı var. ";
-    }
-    if (topics.length > 0) {
-      insight += `Öne çıkan konular: ${topics.join(", ")}.`;
-    }
-    return insight;
   }
 
   private emptyTrendSummary(): LocalTrendSummary {
@@ -316,53 +299,41 @@ class SocialIntelService {
       mention_count: 0,
       positive_ratio: 0,
       negative_ratio: 0,
-      neutral_ratio: 0,
+      neutral_ratio: 1,
       top_topics: [],
       overall_sentiment: "neutral",
-      key_insights: "Henüz veri toplanmadı.",
+      key_insights: "Veri yok",
     };
   }
 
-  async getRecentPosts(limit: number = 50): Promise<SocialPost[]> {
-    // Return from local mock data
-    return MUGLA_LOCAL_DATA.slice(0, limit).map((item, i) => ({
-      id: `local_${i}`,
-      platform: item.platform,
-      content: item.content,
-      author: item.author,
-      url: `https://example.com/${item.platform}/${i}`,
-      published_at: new Date(Date.now() - i * 600000).toISOString(),
-      keywords_matched: [],
-      sentiment: null,
-      sentiment_confidence: null,
-      sentiment_method: null,
-      collected_at: new Date().toISOString(),
-    }));
-  }
+  private buildTrendSummary(analyses: LocalAnalysisItem[]): LocalTrendSummary {
+    const total = analyses.length || 1;
+    const positive = analyses.filter((a) => a.sentiment === "positive").length;
+    const negative = analyses.filter((a) => a.sentiment === "negative").length;
+    const neutral = analyses.filter((a) => a.sentiment === "neutral").length;
 
-  getConnectionStatus() {
+    const wordFreq: Record<string, number> = {};
+    for (const item of analyses) {
+      const words = item.content.split(/\s+/).filter((w) => w.length > 4);
+      for (const w of words) {
+        const key = w.toLowerCase().replace(/[^\w]/g, "");
+        wordFreq[key] = (wordFreq[key] || 0) + 1;
+      }
+    }
+    const top_topics = Object.entries(wordFreq)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([w]) => w);
+
     return {
-      isConnected: true,
-      source: "Yerel Veri İşleme (Local Logic)",
-      lastUpdate: new Date().toLocaleTimeString("tr-TR"),
-      dataSource: "Muğla Yerel Veri Tabanı + Client-Side Analiz",
+      mention_count: total,
+      positive_ratio: positive / total,
+      negative_ratio: negative / total,
+      neutral_ratio: neutral / total,
+      top_topics,
+      overall_sentiment: positive > negative ? "positive" : negative > positive ? "negative" : "neutral",
+      key_insights: `${total} içerik analiz edildi. Baskın duygu: ${positive > negative ? "olumlu" : negative > positive ? "olumsuz" : "nötr"}.`,
     };
-  }
-
-  async getTrendData() {
-    return [];
-  }
-
-  async getSourceReliability() {
-    return [];
-  }
-
-  async triggerCronCollection() {
-    return { success: true, collected: 0, analyzed: 0 };
-  }
-
-  async collectPlatformData(keywords: string[]): Promise<LocalCollectedItem[]> {
-    return this.generateLocalItems(keywords, ["twitter", "youtube"]);
   }
 }
 
