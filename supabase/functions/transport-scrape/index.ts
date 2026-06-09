@@ -1,1 +1,243 @@
-aW1wb3J0IHsgc2VydmUgfSBmcm9tICJodHRwczovL2Rlbm8ubGFuZC9zdGRAMC4xNjguMC9odHRwL3NlcnZlci50cyI7Cgpjb25zdCBjb3JzSGVhZGVycyA9IHsKICAiQWNjZXNzLUNvbnRyb2wtQWxsb3ctT3JpZ2luIjogIioiLAogICJBY2Nlc3MtQ29udHJvbC1BbGxvdy1IZWFkZXJzIjogImF1dGhvcml6YXRpb24sIHgtY2xpZW50LWluZm8sIGFwaWtleSwgY29udGVudC10eXBlLCB4LXN1cGFiYXNlLWNsaWVudC1wbGF0Zm9ybSwgeC1zdXBhYmFzZS1jbGllbnQtcGxhdGZvcm0tdmVyc2lvbiwgeC1zdXBhYmFzZS1jbGllbnQtcnVudGltZSwgeC1zdXBhYmFzZS1jbGllbnQtcnVudGltZS12ZXJzaW9uIiwKfTsKCmNvbnN0IEFJUlBPUlRTOiBSZWNvcmQ8c3RyaW5nLCB7IG5hbWU6IHN0cmluZzsgbGF0OiBudW1iZXI7IGxvbjogbnVtYmVyIH0+ID0gewogIERMTTogeyBuYW1lOiAiRGFsYW1hbiBIYXZhbGltYW7EsSIsIGxhdDogMzYuNzEzMSwgbG9uOiAyOC43OTI1IH0sCiAgQkpWOiB7IG5hbWU6ICJNaWxhcy1Cb2RydW0gSGF2YWxpbWFuxLEiLCBsYXQ6IDM3LjI1MDYsIGxvbjogMjcuNjY0MyB9LAp9OwoKY29uc3QgUkFESVVTX05NID0gODA7IC8vIG5hdXRpY2FsIG1pbGVzIHJhZGl1cyBwZXIgYWlycG9ydAoKZnVuY3Rpb24gaGF2ZXJzaW5lS20obGF0MTogbnVtYmVyLCBsb24xOiBudW1iZXIsIGxhdDI6IG51bWJlciwgbG9uMjogbnVtYmVyKTogbnVtYmVyIHsKICBjb25zdCBSID0gNjM3MTsKICBjb25zdCBkTGF0ID0gKGxhdDIgLSBsYXQxKSAqIE1hdGguUEkgLyAxODA7CiAgY29uc3QgZExvbiA9IChsb24yIC0gbG9uMSkgKiBNYXRoLlBJIC8gMTgwOwogIGNvbnN0IGEgPSBNYXRoLnNpbihkTGF0IC8gMikgKiogMiArIE1hdGguY29zKGxhdDEgKiBNYXRoLlBJIC8gMTgwKSAqIE1hdGguY29zKGxhdDIgKiBNYXRoLlBJIC8gMTgwKSAqIE1hdGguc2luKGRMb24gLyAyKSAqKiAyOwogIHJldHVybiBSICogMiAqIE1hdGguYXRhbjIoTWF0aC5zcXJ0KGEpLCBNYXRoLnNxcnQoMSAtIGEpKTsKfQoKZnVuY3Rpb24gY2xhc3NpZnlGbGlnaHQobGF0OiBudW1iZXIsIGxvbjogbnVtYmVyLCBiYXJvUmF0ZTogbnVtYmVyIHwgbnVsbCwgb25Hcm91bmQ6IGJvb2xlYW4pIHsKICBsZXQgbmVhcmVzdEFpcnBvcnQ6IHN0cmluZyB8IG51bGwgPSBudWxsOwogIGxldCBtaW5EaXN0ID0gSW5maW5pdHk7CiAgZm9yIChjb25zdCBbY29kZSwgYXBdIG9mIE9iamVjdC5lbnRyaWVzKEFJUlBPUlRTKSkgewogICAgY29uc3QgZCA9IGhhdmVyc2luZUttKGxhdCwgbG9uLCBhcC5sYXQsIGFwLmxvbik7CiAgICBpZiAoZCA8IG1pbkRpc3QpIHsgbWluRGlzdCA9IGQ7IG5lYXJlc3RBaXJwb3J0ID0gY29kZTsgfQogIH0KICBpZiAobWluRGlzdCA+IDgwKSByZXR1cm4gbnVsbDsKICAvLyBiYXJvUmF0ZSBpbiBmdC9taW46ID4yMDAgPSBjbGltYmluZyAoZGVwYXJ0dXJlKSwgPC0yMDAgPSBkZXNjZW5kaW5nIChhcnJpdmFsKQogIGNvbnN0IGlzRGVwYXJ0aW5nID0gYmFyb1JhdGUgIT09IG51bGwgJiYgYmFyb1JhdGUgPiAyMDA7CiAgY29uc3QgaXNBcnJpdmluZyA9IGJhcm9SYXRlICE9PSBudWxsICYmIGJhcm9SYXRlIDwgLTIwMDsKICBjb25zdCB0eXBlID0gb25Hcm91bmQgPyAib25fZ3JvdW5kIiA6IGlzRGVwYXJ0aW5nID8gImRlcGFydHVyZSIgOiBpc0Fycml2aW5nID8gImFycml2YWwiIDogInRyYW5zaXQiOwogIHJldHVybiB7IGFpcnBvcnQ6IG5lYXJlc3RBaXJwb3J0LCBkaXN0YW5jZTogTWF0aC5yb3VuZChtaW5EaXN0KSwgdHlwZSB9Owp9Cgphc3luYyBmdW5jdGlvbiBmZXRjaEFkc2JMb2wobGF0OiBudW1iZXIsIGxvbjogbnVtYmVyLCByYWRpdXNObTogbnVtYmVyKTogUHJvbWlzZTxhbnlbXT4gewogIGNvbnN0IHVybCA9IGBodHRwczovL2FwaS5hZHNiLmxvbC92Mi9wb2ludC8ke2xhdH0vJHtsb259LyR7cmFkaXVzTm19YDsKICBjb25zdCBjdHJsID0gbmV3IEFib3J0Q29udHJvbGxlcigpOwogIGNvbnN0IHRpbWVyID0gc2V0VGltZW91dCgoKSA9PiBjdHJsLmFib3J0KCksIDcwMDApOwogIHRyeSB7CiAgICBjb25zdCByZXMgPSBhd2FpdCBmZXRjaCh1cmwsIHsKICAgICAgaGVhZGVyczogeyAiVXNlci1BZ2VudCI6ICJNdWdsYU1vbml0b3IvMi4wIiwgIkFjY2VwdCI6ICJhcHBsaWNhdGlvbi9qc29uIiB9LAogICAgICBzaWduYWw6IGN0cmwuc2lnbmFsLAogICAgfSk7CiAgICBjbGVhclRpbWVvdXQodGltZXIpOwogICAgaWYgKCFyZXMub2spIHRocm93IG5ldyBFcnJvcihgQURTQi5sb2wgZXJyb3I6ICR7cmVzLnN0YXR1c31gKTsKICAgIGNvbnN0IGRhdGEgPSBhd2FpdCByZXMuanNvbigpOwogICAgcmV0dXJuIGRhdGEuYWMgfHwgZGF0YS5haXJjcmFmdCB8fCBbXTsKICB9IGNhdGNoIChlKSB7CiAgICBjbGVhclRpbWVvdXQodGltZXIpOwogICAgdGhyb3cgZTsKICB9Cn0KCmZ1bmN0aW9uIG5vcm1hbGl6ZUFpcmNyYWZ0KHJhdzogYW55KTogYW55IHsKICBjb25zdCBhbHRCYXJvID0gcmF3LmFsdF9iYXJvOwogIGNvbnN0IG9uR3JvdW5kID0gYWx0QmFybyA9PT0gImdyb3VuZCIgfHwgYWx0QmFybyA9PT0gMDsKICBjb25zdCBhbHRGdCA9IHR5cGVvZiBhbHRCYXJvID09PSAibnVtYmVyIiA/IGFsdEJhcm8gOiBudWxsOwogIGNvbnN0IGFsdE0gPSBhbHRGdCAhPT0gbnVsbCA/IE1hdGgucm91bmQoYWx0RnQgKiAwLjMwNDgpIDogbnVsbDsKICBjb25zdCBnc0tub3RzID0gcmF3LmdzID8/IG51bGw7CiAgY29uc3QgZ3NLbWggPSBnc0tub3RzICE9PSBudWxsID8gTWF0aC5yb3VuZChnc0tub3RzICogMS44NTIpIDogbnVsbDsKICByZXR1cm4gewogICAgaWNhbzI0OiByYXcuaGV4LAogICAgY2FsbHNpZ246IChyYXcuZmxpZ2h0IHx8IHJhdy5oZXggfHwgIiIpLnRyaW0oKSwKICAgIHJlZ2lzdHJhdGlvbjogcmF3LnIgPz8gbnVsbCwKICAgIGFpcmNyYWZ0X3R5cGU6IHJhdy50ID8/IG51bGwsCiAgICBsb25naXR1ZGU6IHJhdy5sb24gPz8gbnVsbCwKICAgIGxhdGl0dWRlOiByYXcubGF0ID8/IG51bGwsCiAgICBhbHRpdHVkZTogYWx0TSwKICAgIGFsdGl0dWRlX2Z0OiBhbHRGdCwKICAgIG9uX2dyb3VuZDogb25Hcm91bmQsCiAgICB2ZWxvY2l0eTogZ3NLbWgsCiAgICBoZWFkaW5nOiByYXcudHJhY2sgPz8gcmF3LmNhbGNfdHJhY2sgPz8gbnVsbCwKICAgIHZlcnRpY2FsX3JhdGU6IHJhdy5iYXJvX3JhdGUgPz8gbnVsbCwKICB9Owp9Cgphc3luYyBmdW5jdGlvbiBmZXRjaEFsbEZsaWdodHMoKSB7CiAgLy8gUXVlcnkgYm90aCBhaXJwb3J0cyBpbiBwYXJhbGxlbCwgdGhlbiBkZWR1cGxpY2F0ZSBieSBpY2FvMjQKICBjb25zdCByZXN1bHRzID0gYXdhaXQgUHJvbWlzZS5hbGxTZXR0bGVkKAogICAgT2JqZWN0LnZhbHVlcyhBSVJQT1JUUykubWFwKChhcCkgPT4gZmV0Y2hBZHNiTG9sKGFwLmxhdCwgYXAubG9uLCBSQURJVVNfTk0pKQogICk7CgogIGNvbnN0IHNlZW4gPSBuZXcgU2V0PHN0cmluZz4oKTsKICBjb25zdCBhbGw6IGFueVtdID0gW107CiAgZm9yIChjb25zdCByIG9mIHJlc3VsdHMpIHsKICAgIGlmIChyLnN0YXR1cyA9PT0gImZ1bGZpbGxlZCIpIHsKICAgICAgZm9yIChjb25zdCBhYyBvZiByLnZhbHVlKSB7CiAgICAgICAgaWYgKGFjLmhleCAmJiAhc2Vlbi5oYXMoYWMuaGV4KSkgewogICAgICAgICAgc2Vlbi5hZGQoYWMuaGV4KTsKICAgICAgICAgIGFsbC5wdXNoKG5vcm1hbGl6ZUFpcmNyYWZ0KGFjKSk7CiAgICAgICAgfQogICAgICB9CiAgICB9CiAgfQogIHJldHVybiBhbGw7Cn0KCmZ1bmN0aW9uIGZvcm1hdEZsaWdodERhdGEobm9ybWFsaXplZEZsaWdodHM6IGFueVtdKSB7CiAgY29uc3QgYWlycG9ydHM6IFJlY29yZDxzdHJpbmcsIHsgY29kZTogc3RyaW5nOyBuYW1lOiBzdHJpbmc7IGRlcGFydHVyZXM6IGFueVtdOyBhcnJpdmFsczogYW55W107IG92ZXJoZWFkOiBhbnlbXSB9PiB7CiAgICBETE06IHsgY29kZTogIkRMTSIsIG5hbWU6ICJEYWxhbWFuIEhhdmFsaW1hbsSxIiwgZGVwYXJ0dXJlczogW10sIGFycml2YWxzOiBbXSwgb3ZlcmhlYWQ6IFtdIH0sCiAgICBCSlY6IHsgY29kZTogIkJKViIsIG5hbWU6ICJNaWxhcy1Cb2RydW0gSGF2YWxpbWFuxLEiLCBkZXBhcnR1cmVzOiBbXSwgYXJyaXZhbHM6IFtdLCBvdmVyaGVhZDogW10gfSwKICB9OwogIGZvciAoY29uc3QgZiBvZiBub3JtYWxpemVkRmxpZ2h0cykgewogICAgaWYgKCFmLmxhdGl0dWRlIHx8ICFmLmxvbmdpdHVkZSkgY29udGludWU7CiAgICBjb25zdCBjID0gY2xhc3NpZnlGbGlnaHQoZi5sYXRpdHVkZSwgZi5sb25naXR1ZGUsIGYudmVydGljYWxfcmF0ZSwgZi5vbl9ncm91bmQpOwogICAgaWYgKCFjIHx8ICFhaXJwb3J0c1tjLmFpcnBvcnQhXSkgY29udGludWU7CiAgICBjb25zdCBpbmZvID0gewogICAgICBjYWxsc2lnbjogZi5jYWxsc2lnbiwKICAgICAgcmVnaXN0cmF0aW9uOiBmLnJlZ2lzdHJhdGlvbiwKICAgICAgYWlyY3JhZnRfdHlwZTogZi5haXJjcmFmdF90eXBlLAogICAgICBhbHRpdHVkZTogZi5hbHRpdHVkZSwKICAgICAgYWx0aXR1ZGVfZnQ6IGYuYWx0aXR1ZGVfZnQsCiAgICAgIHZlbG9jaXR5OiBmLnZlbG9jaXR5LAogICAgICBoZWFkaW5nOiBmLmhlYWRpbmcsCiAgICAgIG9uX2dyb3VuZDogZi5vbl9ncm91bmQsCiAgICAgIGRpc3RhbmNlX2ttOiBjLmRpc3RhbmNlLAogICAgICBsYXRpdHVkZTogZi5sYXRpdHVkZSwKICAgICAgbG9uZ2l0dWRlOiBmLmxvbmdpdHVkZSwKICAgIH07CiAgICBpZiAoYy50eXBlID09PSAiZGVwYXJ0dXJlIikgYWlycG9ydHNbYy5haXJwb3J0IV0uZGVwYXJ0dXJlcy5wdXNoKGluZm8pOwogICAgZWxzZSBpZiAoYy50eXBlID09PSAiYXJyaXZhbCIpIGFpcnBvcnRzW2MuYWlycG9ydCFdLmFycml2YWxzLnB1c2goaW5mbyk7CiAgICBlbHNlIGFpcnBvcnRzW2MuYWlycG9ydCFdLm92ZXJoZWFkLnB1c2goaW5mbyk7CiAgfQogIHJldHVybiBPYmplY3QudmFsdWVzKGFpcnBvcnRzKTsKfQoKY29uc3QgQlVTX1JPVVRFWSA9IFsKICB7IGNhcnJpZXI6ICJNdcSfbGEgS29vcC4iLCBmcm9tOiAiTXXEn2xhIiwgdG86ICJCb2RydW0iLCBkZXBhcnR1cmVzOiBbIjA2OjAwIiwiMDc6MzAiLCIwOTowMCIsIjEwOjMwIiwiMTI6MDAiLCIxMzozMCIsIjE1OjAwIiwiMTY6MzAiLCIxODowMCIsIjE5OjMwIl0sIGR1cmF0aW9uOiAiMnMgNDVkayIsIHByaWNlOiAi4oK6MTgwIiwgdHlwZTogImlsw6dlIiB9LAogIHsgY2FycmllcjogIk11xJ9sYSBLb29wLiIsIGZyb206ICJNdcSfbGEiLCB0bzogIkZldGhpeWUiLCBkZXBhcnR1cmVzOiBbIjA2OjMwIiwiMDg6MDAiLCIwOTozMCIsIjExOjAwIiwiMTM6MDAiLCIxNTowMCIsIjE3OjAwIiwiMTk6MDAiXSwgZHVyYXRpb246ICIycyAxNWRrIiwgcHJpY2U6ICLigroxNTAiLCB0eXBlOiAiaWzDp2UiIH0sCiAgeyBjYXJyaWVyOiAiTXXEn2xhIEtvb3AuIiwgZnJvbTogIk11xJ9sYSIsIHRvOiAiTWFybWFyaXMiLCBkZXBhcnR1cmVzOiBbIjA3OjAwIiwiMDg6MzAiLCIxMDowMCIsIjEyOjAwIiwiMTQ6MDAiLCIxNjowMCIsIjE4OjAwIiwiMjA6MDAiXSwgZHVyYXRpb246ICIxcyAzMGRrIiwgcHJpY2U6ICLigroxMjAiLCB0eXBlOiAiaWzDp2UiIH0sCiAgeyBjYXJyaWVyOiAiTXXEn2xhIEtvb3AuIiwgZnJvbTogIk11xJ9sYSIsIHRvOiAiRGFsYW1hbiIsIGRlcGFydHVyZXM6IFsiMDc6MDAiLCIwOTowMCIsIjExOjAwIiwiMTQ6MDAiLCIxNjozMCIsIjE5OjAwIl0sIGR1cmF0aW9uOiAiMXMgNDVkayIsIHByaWNlOiAi4oK6MTMwIiwgdHlwZTogImlsw6dlIiB9LAogIHsgY2FycmllcjogIk11xJ9sYSBLb29wLiIsIGZyb206ICJNdcSfbGEiLCB0bzogIk1pbGFzIiwgZGVwYXJ0dXJlczogWyIwNjozMCIsIjA3OjMwIiwiMDg6MzAiLCIwOTozMCIsIjEwOjMwIiwiMTE6MzAiLCIxMzowMCIsIjE0OjMwIiwiMTY6MDAiLCIxNzozMCIsIjE5OjAwIl0sIGR1cmF0aW9uOiAiNDVkayIsIHByaWNlOiAi4oK6NzAiLCB0eXBlOiAiaWzDp2UiIH0sCiAgeyBjYXJyaWVyOiAiTXXEn2xhIEtvb3AuIiwgZnJvbTogIk11xJ9sYSIsIHRvOiAiRGF0w6dhIiwgZGVwYXJ0dXJlczogWyIwODowMCIsIjEwOjMwIiwiMTQ6MDAiLCIxNzowMCJdLCBkdXJhdGlvbjogIjNzIDE1ZGsiLCBwcmljZTogIuKCujIwMCIsIHR5cGU6ICJpbMOnZSIgfSwKICB7IGNhcnJpZXI6ICJNdcSfbGEgS29vcC4iLCBmcm9tOiAiTXXEn2xhIiwgdG86ICJLw7Z5Y2XEn2l6IiwgZGVwYXJ0dXJlczogWyIwNzozMCIsIjEwOjAwIiwiMTM6MDAiLCIxNjowMCIsIjE4OjMwIl0sIGR1cmF0aW9uOiAiMXMgMTVkayIsIHByaWNlOiAi4oK6MTAwIiwgdHlwZTogImlsw6dlIiB9LAogIHsgY2FycmllcjogIlBhbXVra2FsZSIsIGZyb206ICJNdcSfbGEiLCB0bzogIsSwc3RhbmJ1bCIsIGRlcGFydHVyZXM6IFsiMDg6MDAiLCIxNDowMCIsIjIwOjAwIiwiMjI6MDAiXSwgZHVyYXRpb246ICIxMXMiLCBwcmljZTogIuKCujcwMCIsIHR5cGU6ICLFn2VoaXJsZXJhcmFzxLEiIH0sCiAgeyBjYXJyaWVyOiAiS2FtaWwgS2/DpyIsIGZyb206ICJNdcSfbGEiLCB0bzogIkFua2FyYSIsIGRlcGFydHVyZXM6IFsiMDk6MDAiLCIxNzowMCIsIjIxOjAwIiwiMjM6MDAiXSwgZHVyYXRpb246ICI5cyAzMGRrIiwgcHJpY2U6ICLigrI2MDAiLCB0eXBlOiAixZ9laGlybGVyYXJhc8SxIiB9LAogIHsgY2FycmllcjogIk1ldHJvIiwgZnJvbTogIk11xJ9sYSIsIHRvOiAixLBzbWlyIiwgZGVwYXJ0dXJlczogWyIwNjowMCIsIjA4OjAwIiwiMTA6MDAiLCIxMjowMCIsIjE0OjAwIiwiMTY6MDAiLCIxODowMCIsIjIwOjAwIl0sIGR1cmF0aW9uOiAiM3MgMzBkayIsIHByaWNlOiAi4oK6MjgwIiwgdHlwZTogIsWfZWhpcmxlcmFyYXPEsSIgfSwKICB7IGNhcnJpZXI6ICJQYWx1a2thbGUiLCBmcm9tOiAiTXXEn2xhIiwgdG86ICJBbnRhbHlhIiwgZGVwYXJ0dXJlczogWyIwNzozMCIsIjEwOjAwIiwiMTM6MDAiLCIxNjowMCIsIjE5OjAwIl0sIGR1cmF0aW9uOiAiNHMiLCBwcmljZTogIuKCujMyMCIsIHR5cGU6ICLFn2VoaXJsZXJhcmFzxLEiIH0sCiAgeyBjYXJyaWVyOiAiS2FtaWwgS2/DpyIsIGZyb206ICJNdcSfbGEiLCB0bzogIkRlbml6bGkiLCBkZXBhcnR1cmVzOiBbIjA3OjAwIiwiMDk6MzAiLCIxMjowMCIsIjE1OjAwIiwiMTg6MDAiXSwgZHVyYXRpb246ICIzcyIsIHByaWNlOiAi4oK6MjIwIiwgdHlwZTogIsWfZWhpcmxlcmFyYXPEsSIgfSwKICB7IGNhcnJpZXI6ICJNZXRybyIsIGZyb206ICJNdcSfbGEiLCB0bzogIkF5ZMSxbiIsIGRlcGFydHVyZXM6IFsiMDY6MzAiLCIwOTowMCIsIjExOjMwIiwiMTQ6MDAiLCIxNjozMCIsIjE5OjAwIl0sIGR1cmF0aW9uOiAiMnMgMTVkayIsIHByaWNlOiAi4oK6MTgwIiwgdHlwZTogIsWfZWhpcmxlcmFyYXPEsSIgfSwKXTsKCnNlcnZlKGFzeW5jIChyZXEpID0+IHsKICBpZiAocmVxLm1ldGhvZCA9PT0gIk9QVElPTlMiKSByZXR1cm4gbmV3IFJlc3BvbnNlKG51bGwsIHsgaGVhZGVyczogY29yc0hlYWRlcnMgfSk7CiAgdHJ5IHsKICAgIGNvbnN0IGJvZHkgPSByZXEubWV0aG9kID09PSAiUE9TVCIgPyBhd2FpdCByZXEuanNvbigpLmNhdGNoKCgpID0+ICh7fSkpIDoge307CiAgICBjb25zdCB0eXBlID0gYm9keS50eXBlIHx8IG5ldyBVUkwocmVxLnVybCkuc2VhcmNoUGFyYW1zLmdldCgidHlwZSIpIHx8ICJmbGlnaHRzIjsKCiAgICBpZiAodHlwZSA9PT0gImZsaWdodHMiKSB7CiAgICAgIHRyeSB7CiAgICAgICAgY29uc3QgcmF3Rmxp Z2h0cyA9IGF3YWl0IGZldGNoQWxsRmxpZ2h0cygpOwogICAgICAgIGNvbnN0IGFpcnBvcnRzID0gZm9ybWF0Rmxp Z2h0RGF0YShyYXdGbGlnaHRzKTsKICAgICAgICByZXR1cm4gbmV3IFJlc3BvbnNlKAogICAgICAgICAgSlNPTi5zdHJpbmdpZnkoewogICAgICAgICAgICBzb3VyY2U6ICJhZHNiLmxvbCIsCiAgICAgICAgICAgIHRvdGFsX2FpcmNyYWZ0OiByYXdGbGlnaHRzLmxlbmd0aCwKICAgICAgICAgICAgYWlycG9ydHMsCiAgICAgICAgICAgIGZldGNoZWRfYXQ6IG5ldyBEYXRlKCkudG9JU09TdHJpbmcoKSwKICAgICAgICAgIH0pLAogICAgICAgICAgeyBoZWFkZXJzOiB7IC4uLmNvcnNIZWFkZXJzLCAiQ29udGVudC1UeXBlIjogImFwcGxpY2F0aW9uL2pzb24iIH0gfQogICAgICAgICk7CiAgICAgIH0gY2F0Y2ggKGUpIHsKICAgICAgICByZXR1cm4gbmV3IFJlc3BvbnNlKAogICAgICAgICAgSlNPTi5zdHJpbmdpZnkoewogICAgICAgICAgICBzb3VyY2U6ICJhZHNiLmxvbCIsCiAgICAgICAgICAgIGVycm9yOiBgVcOndcWfIHZlcmlzaSBhbMSxbmFtYWTEsTogJHtlIGluc3RhbmNlb2YgRXJyb3IgPyBlLm1lc3NhZ2UgOiBTdHJpbmcoZSl9YCwKICAgICAgICAgICAgdG90YWxfYWlyY3JhZnQ6IDAsCiAgICAgICAgICAgIGFpcnBvcnRzOiBbCiAgICAgICAgICAgICAgeyBjb2RlOiAiRExNIiwgbmFtZTogIkRhbGFtYW4gSGF2YWxpbWFuxLEiLCBkZXBhcnR1cmVzOiBbXSwgYXJyaXZhbHM6IFtdLCBvdmVyaGVhZDogW10gfSwKICAgICAgICAgICAgICB7IGNvZGU6ICJCSlYiLCBuYW1lOiAiTWlsYXMtQm9kcnVtIEhhdmFsaW1hbsSxIiwgZGVwYXJ0dXJlczogW10sIGFycml2YWxzOiBbXSwgb3ZlcmhlYWQ6IFtdIH0sCiAgICAgICAgICAgIF0sCiAgICAgICAgICAgIGZldGNoZWRfYXQ6IG5ldyBEYXRlKCkudG9JU09TdHJpbmcoKSwKICAgICAgICAgIH0pLAogICAgICAgICAgeyBoZWFkZXJzOiB7IC4uLmNvcnNIZWFkZXJzLCAiQ29udGVudC1UeXBlIjogImFwcGxpY2F0aW9uL2pzb24iIH0gfQogICAgICAgICk7CiAgICAgIH0KICAgIH0KCiAgICBpZiAodHlwZSA9PT0gImJ1cyIpIHsKICAgICAgcmV0dXJuIG5ldyBSZXNwb25zZSgKICAgICAgICBKU09OLnN0cmluZ2lmeSh7IHNvdXJjZTogIm11Z2xhLXRlcm1pbmFsLXN0YXRpYyIsIHJvdXRlczogQlVTX1JPVVRFUywgbm90ZTogIlN0YXRpYyBzY2hlZHVsZSDigJQgdXBkYXRlZCBtb250aGx5IGZyb20gb2ZmaWNpYWwgdGVybWluYWwgYm9hcmRzLiIsIGZldGNoZWRfYXQ6IG5ldyBEYXRlKCkudG9JU09TdHJpbmcoKSB9KSwKICAgICAgICB7IGhlYWRlcnM6IHsgLi4uY29yc0hlYWRlcnMsICJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiIgfSB9CiAgICAgICk7CiAgICB9CgogICAgcmV0dXJuIG5ldyBSZXNwb25zZShKU09OLnN0cmluZ2lmeSh7IGVycm9yOiAiSW52YWxpZCB0eXBlLiBVc2UgJ2ZsaWdodHMnIG9yICdidXMnLiIgfSksIHsgc3RhdHVzOiA0MDAsIGhlYWRlcnM6IHsgLi4uY29yc0hlYWRlcnMsICJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiIgfSB9KTsKICB9IGNhdGNoIChlKSB7CiAgICByZXR1cm4gbmV3IFJlc3BvbnNlKEpTT04uc3RyaW5naWZ5KHsgZXJyb3I6IGUgaW5zdGFuY2VvZiBFcnJvciA/IGUubWVzc2FnZSA6ICJVbmtub3duIGVycm9yIiB9KSwgeyBzdGF0dXM6IDUwMCwgaGVhZGVyczogeyAuLi5jb3JzSGVhZGVycywgIkNvbnRlbnQtVHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIiB9IH0pOwogIH0KfSk7Cg==
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+// Muğla region center — used for ADSB.fi radius query
+const MUGLA_CENTER = { lat: 37.05, lon: 28.35 };
+// Query radius: 100 nautical miles ≈ 185 km — covers both airports + approach paths
+const ADSB_RADIUS_NM = 100;
+
+const AIRPORTS: Record<string, { name: string; lat: number; lon: number }> = {
+  DLM: { name: "Dalaman Havalimanı",       lat: 36.7131, lon: 28.7925 },
+  BJV: { name: "Milas-Bodrum Havalimanı",  lat: 37.2506, lon: 27.6643 },
+};
+
+// Registration prefix → country (Turkish + common European / regional carriers)
+function registrationToCountry(reg: string): string {
+  if (!reg) return "—";
+  const r = reg.toUpperCase();
+  if (r.startsWith("TC-"))              return "Türkiye";
+  if (r.startsWith("D-"))               return "Almanya";
+  if (r.startsWith("F-"))               return "Fransa";
+  if (r.startsWith("G-") || r.startsWith("M-")) return "İngiltere";
+  if (r.startsWith("PH-"))              return "Hollanda";
+  if (r.startsWith("EC-"))              return "İspanya";
+  if (r.startsWith("EI-"))              return "İrlanda";
+  if (r.startsWith("I-"))               return "İtalya";
+  if (r.startsWith("OE-"))              return "Avusturya";
+  if (r.startsWith("SP-"))              return "Polonya";
+  if (r.startsWith("OK-"))              return "Çek C.";
+  if (r.startsWith("HA-"))              return "Macaristan";
+  if (r.startsWith("OY-"))              return "Danimarka";
+  if (r.startsWith("SE-"))              return "İsveç";
+  if (r.startsWith("OH-"))              return "Finlandiya";
+  if (r.startsWith("LN-"))              return "Norveç";
+  if (r.startsWith("A6-"))              return "BAE";
+  if (r.startsWith("4X-"))              return "İsrail";
+  if (r.startsWith("EP-"))              return "İran";
+  if (r.startsWith("RA-") || r.startsWith("RF-")) return "Rusya";
+  if (r.startsWith("UR-"))              return "Ukrayna";
+  if (r.startsWith("EK-"))              return "Ermenistan";
+  if (r.startsWith("9H-"))              return "Malta";
+  if (r.startsWith("5B-"))              return "Kıbrıs";
+  if (r.startsWith("LZ-"))              return "Bulgaristan";
+  if (r.startsWith("YR-"))              return "Romanya";
+  if (r.startsWith("SX-"))              return "Yunanistan";
+  if (r.startsWith("LY-"))              return "Litvanya";
+  if (r.startsWith("YL-"))             return "Letonya";
+  if (r.startsWith("ES-"))              return "Estonya";
+  if (r.startsWith("CS-"))              return "Portekiz";
+  if (r.startsWith("HB-"))              return "İsviçre";
+  if (r.startsWith("OO-"))              return "Belçika";
+  // fallback: use prefix up to first dash
+  const dash = r.indexOf("-");
+  return dash > 0 ? r.substring(0, dash) : r.substring(0, 3);
+}
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// verticalRateFpm: feet per minute (ADSB.fi baro_rate field)
+// Threshold: ±200 fpm (~1 m/s) — enough to distinguish cruise vs. climb/descent
+function classifyFlight(
+  lat: number,
+  lon: number,
+  verticalRateFpm: number | null,
+  onGround: boolean
+) {
+  let nearestAirport: string | null = null;
+  let minDist = Infinity;
+  for (const [code, ap] of Object.entries(AIRPORTS)) {
+    const d = haversineKm(lat, lon, ap.lat, ap.lon);
+    if (d < minDist) { minDist = d; nearestAirport = code; }
+  }
+  // 120 km radius per airport — catches approaches from further out
+  if (minDist > 120) return null;
+  const isDeparting = !onGround && verticalRateFpm !== null && verticalRateFpm > 200;
+  const isArriving  = !onGround && verticalRateFpm !== null && verticalRateFpm < -200;
+  const type = onGround
+    ? "on_ground"
+    : isDeparting ? "departure"
+    : isArriving  ? "arrival"
+    : "transit";
+  return { airport: nearestAirport!, distance: Math.round(minDist), type };
+}
+
+// ── ADSB.fi open data (no-auth, free, reliable EU coverage) ─────────────────
+async function fetchAdsbFiFlights(): Promise<any[]> {
+  const url = `https://opendata.adsb.fi/api/v2/lat/${MUGLA_CENTER.lat}/lon/${MUGLA_CENTER.lon}/dist/${ADSB_RADIUS_NM}`;
+  const res = await fetch(url, {
+    headers: { "User-Agent": "MuglaMonitor/2.0", "Accept": "application/json" },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) throw new Error(`ADSB.fi error: ${res.status}`);
+  const data = await res.json();
+  const aircraft: any[] = data.aircraft || data.ac || [];
+
+  return aircraft
+    .filter((ac) => typeof ac.lat === "number" && typeof ac.lon === "number")
+    .map((ac) => {
+      const altFt = ac.alt_baro;
+      const onGround = altFt === "ground" || (typeof altFt === "number" && altFt < 150);
+      const altM = altFt === "ground" ? 0 : (typeof altFt === "number" ? Math.round(altFt * 0.3048) : null);
+      return {
+        icao24:         ac.hex,
+        callsign:       (ac.flight || "").trim() || ac.r || ac.hex,
+        origin_country: registrationToCountry(ac.r || ""),
+        registration:   ac.r   || null,
+        aircraft_type:  ac.t   || null,
+        longitude:      ac.lon,
+        latitude:       ac.lat,
+        altitude:       altM,
+        on_ground:      onGround,
+        velocity:       typeof ac.gs        === "number" ? Math.round(ac.gs * 1.852) : null, // kts→km/h
+        heading:        typeof ac.track     === "number" ? Math.round(ac.track) : null,
+        vertical_rate:  typeof ac.baro_rate === "number" ? ac.baro_rate : null, // fpm
+      };
+    });
+}
+
+function formatFlightData(rawFlights: any[]) {
+  const airports: Record<
+    string,
+    { code: string; name: string; departures: any[]; arrivals: any[]; overhead: any[] }
+  > = {
+    DLM: { code: "DLM", name: "Dalaman Havalimanı",       departures: [], arrivals: [], overhead: [] },
+    BJV: { code: "BJV", name: "Milas-Bodrum Havalimanı",  departures: [], arrivals: [], overhead: [] },
+  };
+  for (const f of rawFlights) {
+    if (!f.latitude || !f.longitude) continue;
+    const c = classifyFlight(f.latitude, f.longitude, f.vertical_rate, f.on_ground);
+    if (!c || !airports[c.airport]) continue;
+    const info = {
+      callsign:        f.callsign,
+      origin_country:  f.origin_country,
+      registration:    f.registration,
+      aircraft_type:   f.aircraft_type,
+      altitude:        f.altitude,
+      velocity:        f.velocity,
+      heading:         f.heading,
+      on_ground:       f.on_ground,
+      distance_km:     c.distance,
+      latitude:        f.latitude,
+      longitude:       f.longitude,
+    };
+    if (c.type === "departure")       airports[c.airport].departures.push(info);
+    else if (c.type === "arrival")    airports[c.airport].arrivals.push(info);
+    else                              airports[c.airport].overhead.push(info); // transit + on_ground
+  }
+  return Object.values(airports);
+}
+
+// ── Bus routes (static) ───────────────────────────────────────────────────────
+const BUS_ROUTES = [
+  { carrier: "Muğla Koop.", from: "Muğla", to: "Bodrum",    departures: ["06:00","07:30","09:00","10:30","12:00","13:30","15:00","16:30","18:00","19:30"], duration: "2s 45dk", price: "₺180", type: "ilçe" },
+  { carrier: "Muğla Koop.", from: "Muğla", to: "Fethiye",   departures: ["06:30","08:00","09:30","11:00","13:00","15:00","17:00","19:00"],                   duration: "2s 15dk", price: "₺150", type: "ilçe" },
+  { carrier: "Muğla Koop.", from: "Muğla", to: "Marmaris",  departures: ["07:00","08:30","10:00","12:00","14:00","16:00","18:00","20:00"],                   duration: "1s 30dk", price: "₺120", type: "ilçe" },
+  { carrier: "Muğla Koop.", from: "Muğla", to: "Dalaman",   departures: ["07:00","09:00","11:00","14:00","16:30","19:00"],                                    duration: "1s 45dk", price: "₺130", type: "ilçe" },
+  { carrier: "Muğla Koop.", from: "Muğla", to: "Milas",     departures: ["06:30","07:30","08:30","09:30","10:30","11:30","13:00","14:30","16:00","17:30","19:00"], duration: "45dk",    price: "₺70",  type: "ilçe" },
+  { carrier: "Muğla Koop.", from: "Muğla", to: "Datça",     departures: ["08:00","10:30","14:00","17:00"],                                                    duration: "3s 15dk", price: "₺200", type: "ilçe" },
+  { carrier: "Muğla Koop.", from: "Muğla", to: "Köyceğiz",  departures: ["07:30","10:00","13:00","16:00","18:30"],                                            duration: "1s 15dk", price: "₺100", type: "ilçe" },
+  { carrier: "Pamukkale",   from: "Muğla", to: "İstanbul",  departures: ["08:00","14:00","20:00","22:00"],                                                    duration: "11s",     price: "₺700", type: "şehirlerarası" },
+  { carrier: "Kamil Koç",   from: "Muğla", to: "Ankara",    departures: ["09:00","17:00","21:00","23:00"],                                                    duration: "9s 30dk", price: "₺600", type: "şehirlerarası" },
+  { carrier: "Metro",       from: "Muğla", to: "İzmir",     departures: ["06:00","08:00","10:00","12:00","14:00","16:00","18:00","20:00"],                   duration: "3s 30dk", price: "₺280", type: "şehirlerarası" },
+  { carrier: "Pamukkale",   from: "Muğla", to: "Antalya",   departures: ["07:30","10:00","13:00","16:00","19:00"],                                            duration: "4s",      price: "₺320", type: "şehirlerarası" },
+  { carrier: "Kamil Koç",   from: "Muğla", to: "Denizli",   departures: ["07:00","09:30","12:00","15:00","18:00"],                                            duration: "3s",      price: "₺220", type: "şehirlerarası" },
+  { carrier: "Metro",       from: "Muğla", to: "Aydın",     departures: ["06:30","09:00","11:30","14:00","16:30","19:00"],                                    duration: "2s 15dk", price: "₺180", type: "şehirlerarası" },
+];
+
+const EMPTY_AIRPORTS = [
+  { code: "DLM", name: "Dalaman Havalimanı",       departures: [], arrivals: [], overhead: [] },
+  { code: "BJV", name: "Milas-Bodrum Havalimanı",  departures: [], arrivals: [], overhead: [] },
+];
+
+// ── Handler ───────────────────────────────────────────────────────────────────
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  try {
+    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    const type = body.type || new URL(req.url).searchParams.get("type") || "flights";
+
+    if (type === "flights") {
+      try {
+        const rawFlights = await fetchAdsbFiFlights();
+        const airports   = formatFlightData(rawFlights);
+        return new Response(
+          JSON.stringify({
+            source:         "adsb.fi",
+            total_aircraft: rawFlights.length,
+            airports,
+            fetched_at:     new Date().toISOString(),
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (e) {
+        console.error("ADSB.fi fetch failed:", e);
+        return new Response(
+          JSON.stringify({
+            source:         "adsb.fi",
+            error:          "Veri alınamadı. Kısa süre içinde yeniden denenecek.",
+            total_aircraft: 0,
+            airports:       EMPTY_AIRPORTS,
+            fetched_at:     new Date().toISOString(),
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    if (type === "bus") {
+      return new Response(
+        JSON.stringify({
+          source:     "mugla-terminal-static",
+          routes:     BUS_ROUTES,
+          note:       "Static schedule — updated monthly from official terminal boards.",
+          fetched_at: new Date().toISOString(),
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ error: "Invalid type. Use 'flights' or 'bus'." }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (e) {
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
