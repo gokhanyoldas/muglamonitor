@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { DashboardPanel } from "../DashboardPanel";
-import { PlaneTakeoff, PlaneLanding, RefreshCw, Loader2, Radar } from "lucide-react";
+import { PlaneTakeoff, RefreshCw, Loader2, Radar, WifiOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 type LiveFlight = {
@@ -56,12 +56,15 @@ export const FlightTrackerSection = () => {
   const [selectedAirport, setSelectedAirport] = useState(0);
   const [viewMode, setViewMode] = useState<"all" | "dep" | "arr">("all");
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
   const [totalAircraft, setTotalAircraft] = useState(0);
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
-  const [source, setSource] = useState("opensky-network.org");
+  const [lastUpdateTs, setLastUpdateTs] = useState<Date | null>(null);
+  const [source, setSource] = useState("adsb.lol");
 
   const fetchLiveData = useCallback(async () => {
     setLoading(true);
+    setFetchError(false);
     try {
       const { data, error } = await supabase.functions.invoke("transport-scrape", {
         body: { type: "flights" },
@@ -69,11 +72,15 @@ export const FlightTrackerSection = () => {
       if (!error && data?.airports?.length) {
         setAirports(data.airports);
         setTotalAircraft(data.total_aircraft || 0);
-        setSource(data.source || "opensky-network.org");
-        setLastUpdate(new Date().toLocaleTimeString("tr-TR", { hour12: false }));
+        setSource(data.source || "adsb.lol");
+        const now = new Date();
+        setLastUpdate(now.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }));
+        setLastUpdateTs(now);
+      } else if (error) {
+        setFetchError(true);
       }
     } catch {
-      // keep existing state
+      setFetchError(true);
     } finally {
       setLoading(false);
     }
@@ -95,8 +102,17 @@ export const FlightTrackerSection = () => {
     viewMode === "dep" ? allFlights.filter(f => f._type === "dep") :
     allFlights.filter(f => f._type === "arr");
 
+  // How stale is the data?
+  const isStale = lastUpdateTs ? (Date.now() - lastUpdateTs.getTime()) > 60_000 : false;
+
   return (
-    <DashboardPanel title="Uçuş Takip" icon={<PlaneTakeoff size={14} />} badge="CANLI" badgeVariant="live" count={totalAircraft}>
+    <DashboardPanel
+      title="Uçuş Takip"
+      icon={<PlaneTakeoff size={14} />}
+      badge="CANLI"
+      badgeVariant="live"
+      count={totalAircraft > 0 ? totalAircraft : undefined}
+    >
       <div className="flex items-center justify-between mb-2">
         <div className="flex gap-1">
           {airports.map((ap, i) => (
@@ -114,18 +130,55 @@ export const FlightTrackerSection = () => {
           </button>
         </div>
       </div>
+
+      {/* Source + last-update bar — always visible once first fetch completes */}
       <div className="text-[9px] font-mono text-muted-foreground mb-2 flex items-center justify-between">
-        <span className="flex items-center gap-1"><Radar size={10} className="text-success" />{airport.name} — {source}</span>
-        {lastUpdate && <span>⟳ {lastUpdate}</span>}
+        <span className="flex items-center gap-1">
+          {fetchError ? (
+            <WifiOff size={10} className="text-destructive" />
+          ) : (
+            <Radar size={10} className={isStale ? "text-yellow-500" : "text-success"} />
+          )}
+          {airport.name} — {source}
+        </span>
+        <span className={`flex items-center gap-1 ${isStale ? "text-yellow-500" : ""}`}>
+          {loading ? (
+            <span className="animate-pulse">Güncelleniyor...</span>
+          ) : fetchError ? (
+            <span className="text-destructive">Bağlantı hatası</span>
+          ) : lastUpdate ? (
+            <>⟳ {lastUpdate}</>
+          ) : (
+            <span className="animate-pulse">Yükleniyor...</span>
+          )}
+        </span>
       </div>
+
       <div className="flex items-center gap-2 px-2 py-1 text-[8px] font-mono text-muted-foreground uppercase tracking-wider border-b border-border/50 mb-1">
         <span className="w-16">Çağrı</span><span className="w-14">Ülke</span><span className="flex-1">Yükseklik • Hız</span><span className="w-8 text-center">Yön</span><span className="w-12 text-center">Mesafe</span><span className="w-14 text-center">Durum</span>
       </div>
+
       <div className="space-y-1 max-h-[320px] overflow-y-auto">
-        {flights.length > 0 ? flights.map((f, i) => <FlightRow key={`${f.callsign}-${i}`} flight={f} type={f._type} />) : (
-          <div className="text-center py-4 text-[10px] text-muted-foreground">{loading ? "Uçuş verileri yükleniyor..." : "Bölgede aktif uçuş bulunamadı"}</div>
+        {flights.length > 0 ? (
+          flights.map((f, i) => <FlightRow key={`${f.callsign}-${i}`} flight={f} type={f._type} />)
+        ) : (
+          <div className="text-center py-6 space-y-1">
+            <p className="text-[10px] text-muted-foreground">
+              {loading
+                ? "Uçuş verileri yükleniyor..."
+                : fetchError
+                ? "Veri alınamadı — yeniden dene"
+                : "Şu an bölgede takip edilen uçuş yok"}
+            </p>
+            {!loading && !fetchError && lastUpdate && (
+              <p className="text-[9px] text-muted-foreground/50 font-mono">
+                ADS-B son tarama: {lastUpdate}
+              </p>
+            )}
+          </div>
         )}
       </div>
+
       <div className="flex items-center gap-3 mt-2 pt-2 border-t border-border/30 text-[9px] font-mono text-muted-foreground">
         <span className="text-success">↗ Kalkış: {airport.departures.length}</span>
         <span className="text-accent">↙ İniş: {airport.arrivals.length}</span>
