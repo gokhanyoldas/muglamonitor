@@ -17,7 +17,7 @@ jobs:
         with:
           version: latest
 
-      - name: Deploy changed edge functions
+      - name: Deploy edge functions
         run: |
           supabase functions deploy transport-scrape  --project-ref wivooargsmcwbiokpklu
           supabase functions deploy data-scrape        --project-ref wivooargsmcwbiokpklu
@@ -27,4 +27,4 @@ jobs:
           supabase functions deploy social-collect     --project-ref wivooargsmcwbiokpklu
           supabase functions deploy social-analyze     --project-ref wivooargsmcwbiokpklu
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.MUGLAMONITOR_SURETHING }}
