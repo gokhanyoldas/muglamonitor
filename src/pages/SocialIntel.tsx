@@ -264,7 +264,12 @@ const SocialIntel = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <LiveFeedIndicator lastUpdate={lastUpdate} itemCount={analyses.length} isCollecting={isCollecting} />
+            <LiveFeedIndicator
+              lastUpdate={lastUpdate}
+              itemCount={analyses.length}
+              isCollecting={isCollecting}
+              mode={dataMode}
+            />
             <button
               onClick={() => setAutoRefresh(!autoRefresh)}
               className={`text-[9px] font-mono px-2 py-1.5 rounded border ${
