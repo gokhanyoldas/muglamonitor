@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, X, Tag, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Keyword {
   id: string;
@@ -31,6 +32,7 @@ export const KeywordManager = ({ onKeywordsChange }: KeywordManagerProps) => {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const { toast } = useToast();
+  const { user, canManageIntelligence } = useAuth();
 
   // Fetch keywords from DB
   useEffect(() => {
@@ -58,12 +60,13 @@ export const KeywordManager = ({ onKeywordsChange }: KeywordManagerProps) => {
   };
 
   const addKeyword = async () => {
-    if (!newKeyword.trim()) return;
+    if (!newKeyword.trim() || !user || !canManageIntelligence) return;
     setAdding(true);
 
     const { error } = await supabase
       .from("social_keywords")
       .insert({
+        user_id: user.id,
         keyword: newKeyword.trim(),
         category: newCategory,
         created_by: "user",
@@ -107,6 +110,14 @@ export const KeywordManager = ({ onKeywordsChange }: KeywordManagerProps) => {
     return (
       <div className="flex items-center justify-center py-4">
         <Loader2 size={14} className="animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!canManageIntelligence) {
+    return (
+      <div className="text-[10px] font-mono text-muted-foreground/70 text-center py-3">
+        Anahtar kelime yönetimi analyst veya admin hesabı gerektirir.
       </div>
     );
   }

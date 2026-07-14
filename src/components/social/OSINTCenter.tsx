@@ -11,6 +11,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Search, Eye, MapPin, Clock, ExternalLink, Loader2,
   AlertCircle, CheckCircle2, XCircle, HelpCircle,
@@ -421,8 +422,14 @@ function GeoMonitor() {
 function SearchHistory() {
   const [rows, setRows]       = useState<SearchHistoryRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
 
   const loadHistory = useCallback(async () => {
+    if (!user) {
+      setRows([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const { data } = await supabase
       .from("osint_searches")
@@ -431,7 +438,7 @@ function SearchHistory() {
       .limit(20);
     setRows((data as SearchHistoryRow[]) ?? []);
     setLoading(false);
-  }, []);
+  }, [user]);
 
   const deleteRow = useCallback(async (id: string) => {
     await supabase.from("osint_searches").delete().eq("id", id);
@@ -439,6 +446,16 @@ function SearchHistory() {
   }, []);
 
   useEffect(() => { loadHistory(); }, [loadHistory]);
+
+  if (!user) {
+    return (
+      <div className="rounded-lg border border-slate-700/50 bg-slate-950/60 p-4">
+        <p className="text-[10px] font-mono text-slate-500 text-center">
+          Arama geçmişi yalnızca giriş yapan kullanıcıya özeldir.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-lg border border-slate-700/50 bg-slate-950/60 p-4">

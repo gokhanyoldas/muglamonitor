@@ -19,6 +19,21 @@ interface ParsedArticle {
   publishedAt: string | null;
 }
 
+async function isIntelligenceManager(req: Request, supabaseUrl: string): Promise<boolean> {
+  const authorization = req.headers.get("Authorization");
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!authorization || !anonKey) return false;
+
+  const auth = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authorization } },
+  });
+  const { data, error } = await auth.auth.getUser();
+  if (error || !data.user) return false;
+
+  const role = data.user.app_metadata?.role;
+  return role === "admin" || role === "analyst";
+}
+
 // ─── Google Alerts HTML Parser ───
 function parseGoogleAlerts(html: string): ParsedArticle[] {
   const articles: ParsedArticle[] = [];
@@ -142,9 +157,25 @@ function dedupeByTitle(articles: ParsedArticle[]): ParsedArticle[] {
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  if (!(await isIntelligenceManager(req, supabaseUrl))) {
+    return new Response(
+      JSON.stringify({ error: "Analyst or admin access required" }),
+      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!serviceRoleKey) {
+    return new Response(
+      JSON.stringify({ error: "Server configuration is incomplete" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
   const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY")!
+    supabaseUrl,
+    serviceRoleKey
   );
 
   try {

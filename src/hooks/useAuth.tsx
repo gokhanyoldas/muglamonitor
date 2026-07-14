@@ -8,6 +8,7 @@ interface AuthContextType {
   isLoading: boolean;
   isGuest: boolean;
   isAuthenticated: boolean;
+  canManageIntelligence: boolean;
   signOut: () => Promise<void>;
   enterAsGuest: () => void;
 }
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   isGuest: false,
   isAuthenticated: false,
+  canManageIntelligence: false,
   signOut: async () => {},
   enterAsGuest: () => {},
 });
@@ -65,9 +67,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const isAuthenticated = !!session || isGuest;
+  const intelligenceRole = user?.app_metadata?.role;
+  const canManageIntelligence = intelligenceRole === "admin" || intelligenceRole === "analyst";
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, isGuest, isAuthenticated, signOut, enterAsGuest }}>
+    <AuthContext.Provider value={{
+      user,
+      session,
+      isLoading,
+      isGuest,
+      isAuthenticated,
+      canManageIntelligence,
+      signOut,
+      enterAsGuest,
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, X, Newspaper, Rss, Globe, Loader2, RefreshCw, CheckCircle, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface NewsSource {
   id: string;
@@ -32,6 +33,7 @@ export const NewsSourceManager = ({ onSourcesChange }: NewsSourceManagerProps) =
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", url: "", rss_url: "", category: "newspaper", region: "" });
   const { toast } = useToast();
+  const { canManageIntelligence } = useAuth();
 
   useEffect(() => {
     fetchSources();
@@ -53,7 +55,7 @@ export const NewsSourceManager = ({ onSourcesChange }: NewsSourceManagerProps) =
   };
 
   const addSource = async () => {
-    if (!form.name.trim() || !form.url.trim()) return;
+    if (!form.name.trim() || !form.url.trim() || !canManageIntelligence) return;
     setAdding(true);
 
     const { error } = await supabase.from("news_sources").insert({
@@ -81,11 +83,13 @@ export const NewsSourceManager = ({ onSourcesChange }: NewsSourceManagerProps) =
   };
 
   const toggleSource = async (id: string, current: boolean) => {
+    if (!canManageIntelligence) return;
     await supabase.from("news_sources").update({ is_active: !current }).eq("id", id);
     await fetchSources();
   };
 
   const deleteSource = async (id: string, name: string, createdBy: string) => {
+    if (!canManageIntelligence) return;
     if (createdBy === "system") {
       toast({ title: "Sistem kaynakları silinemez, devre dışı bırakabilirsiniz", variant: "destructive" });
       return;
@@ -129,15 +133,23 @@ export const NewsSourceManager = ({ onSourcesChange }: NewsSourceManagerProps) =
           >
             <RefreshCw size={8} />
           </button>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="text-[9px] font-mono px-2 py-0.5 rounded bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 flex items-center gap-1"
-          >
-            <Plus size={8} />
-            Kaynak ekle
-          </button>
+          {canManageIntelligence && (
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="text-[9px] font-mono px-2 py-0.5 rounded bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 flex items-center gap-1"
+            >
+              <Plus size={8} />
+              Kaynak ekle
+            </button>
+          )}
         </div>
       </div>
+
+      {!canManageIntelligence && (
+        <div className="text-[9px] font-mono text-muted-foreground/60">
+          Kaynak ekleme ve düzenleme analyst veya admin hesabı gerektirir.
+        </div>
+      )}
 
       {/* Add form */}
       {showForm && (
@@ -211,12 +223,18 @@ export const NewsSourceManager = ({ onSourcesChange }: NewsSourceManagerProps) =
             }`}
           >
             {/* Status indicator */}
-            <button onClick={() => toggleSource(src.id, src.is_active)} title={src.is_active ? "Devre dışı bırak" : "Aktif et"}>
-              {src.is_active
-                ? <CheckCircle size={10} className="text-emerald-400 shrink-0" />
-                : <XCircle size={10} className="text-muted-foreground/40 shrink-0" />
-              }
-            </button>
+            {canManageIntelligence ? (
+              <button onClick={() => toggleSource(src.id, src.is_active)} title={src.is_active ? "Devre dışı bırak" : "Aktif et"}>
+                {src.is_active
+                  ? <CheckCircle size={10} className="text-emerald-400 shrink-0" />
+                  : <XCircle size={10} className="text-muted-foreground/40 shrink-0" />
+                }
+              </button>
+            ) : src.is_active ? (
+              <CheckCircle size={10} className="text-emerald-400 shrink-0" />
+            ) : (
+              <XCircle size={10} className="text-muted-foreground/40 shrink-0" />
+            )}
 
             {/* Info */}
             <div className="flex-1 min-w-0">
@@ -245,7 +263,7 @@ export const NewsSourceManager = ({ onSourcesChange }: NewsSourceManagerProps) =
             </span>
 
             {/* Delete (user-added only) */}
-            {src.created_by === "user" && (
+            {canManageIntelligence && src.created_by === "user" && (
               <button
                 onClick={() => deleteSource(src.id, src.name, src.created_by)}
                 className="text-muted-foreground/40 hover:text-destructive shrink-0"

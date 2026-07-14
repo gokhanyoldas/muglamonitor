@@ -16,6 +16,18 @@ interface PlatformResult {
   detail?: string;
 }
 
+async function getAuthenticatedUserId(req: Request, supabaseUrl: string): Promise<string | null> {
+  const authorization = req.headers.get("Authorization");
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!authorization || !anonKey) return null;
+
+  const auth = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authorization } },
+  });
+  const { data, error } = await auth.auth.getUser();
+  return error ? null : data.user?.id ?? null;
+}
+
 // ─── Platform definitions ────────────────────────────────────────────────────
 
 const PLATFORMS = [
@@ -205,17 +217,21 @@ Deno.serve(async (req) => {
     const foundCount = results.filter((r) => r.status === "found").length;
 
     // Persist to Supabase
-    const supabaseUrl  = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const userId = await getAuthenticatedUserId(req, supabaseUrl);
     const db = createClient(supabaseUrl, supabaseKey);
 
-    await db.from("osint_searches").insert({
-      search_type: "username",
-      query: cleanUsername,
-      results: results,
-      platform_count: PLATFORMS.length,
-      found_count: foundCount,
-    });
+    if (userId) {
+      await db.from("osint_searches").insert({
+        user_id: userId,
+        search_type: "username",
+        query: cleanUsername,
+        results,
+        platform_count: PLATFORMS.length,
+        found_count: foundCount,
+      });
+    }
 
     return new Response(
       JSON.stringify({ username: cleanUsername, results, found_count: foundCount, searched_at: new Date().toISOString() }),

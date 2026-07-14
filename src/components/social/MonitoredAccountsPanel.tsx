@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Twitter, Youtube, Instagram, Facebook, Linkedin, Plus, Trash2, RefreshCw, CheckCircle2, Circle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Platform = "twitter" | "youtube" | "instagram" | "facebook" | "linkedin";
@@ -85,6 +86,7 @@ export const MonitoredAccountsPanel = () => {
   const [newDisplayName, setNewDisplayName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
+  const { canManageIntelligence } = useAuth();
 
   const fetchAccounts = async () => {
     const { data } = await supabase
@@ -98,7 +100,7 @@ export const MonitoredAccountsPanel = () => {
   useEffect(() => { fetchAccounts(); }, []);
 
   const addAccount = async () => {
-    if (!newUsername.trim()) return;
+    if (!newUsername.trim() || !canManageIntelligence) return;
     setIsSaving(true);
     const row = {
       platform: newPlatform,
@@ -119,11 +121,13 @@ export const MonitoredAccountsPanel = () => {
   };
 
   const toggleActive = async (acc: Account) => {
+    if (!canManageIntelligence) return;
     await supabase.from("monitored_accounts").update({ is_active: !acc.is_active }).eq("id", acc.id);
     fetchAccounts();
   };
 
   const deleteAccount = async (id: string) => {
+    if (!canManageIntelligence) return;
     await supabase.from("monitored_accounts").delete().eq("id", id);
     fetchAccounts();
   };
@@ -137,74 +141,80 @@ export const MonitoredAccountsPanel = () => {
   return (
     <div className="space-y-3">
       {/* Add new account form */}
-      <div className="border border-border/40 rounded-lg p-2.5 space-y-2">
-        <div className="text-[9px] font-mono text-muted-foreground font-bold uppercase tracking-wider">
-          Yeni Hesap Ekle
-        </div>
+      {canManageIntelligence ? (
+        <div className="border border-border/40 rounded-lg p-2.5 space-y-2">
+          <div className="text-[9px] font-mono text-muted-foreground font-bold uppercase tracking-wider">
+            Yeni Hesap Ekle
+          </div>
 
-        {/* Platform selector */}
-        <div className="flex flex-wrap gap-1">
-          {ACTIVE_PLATFORMS.map((p) => {
-            const m = PLATFORM_META[p];
-            return (
-              <button
-                key={p}
-                onClick={() => setNewPlatform(p)}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono border transition-colors ${
-                  newPlatform === p
-                    ? "border-primary/50 bg-primary/10 text-primary"
-                    : "border-border/30 bg-muted/5 text-muted-foreground hover:bg-muted/10"
-                }`}
-              >
-                <span className={m.color}>{m.icon}</span>
-                {m.label}
-              </button>
-            );
-          })}
-          {SOON_PLATFORMS.map((p) => {
-            const m = PLATFORM_META[p];
-            return (
-              <span
-                key={p}
-                title="Yakında"
-                className="flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono border border-border/20 bg-muted/5 text-muted-foreground/40 cursor-not-allowed"
-              >
-                <span>{m.icon}</span>
-                {m.label}
-                <span className="text-[8px] opacity-60">yakında</span>
-              </span>
-            );
-          })}
-        </div>
+          {/* Platform selector */}
+          <div className="flex flex-wrap gap-1">
+            {ACTIVE_PLATFORMS.map((p) => {
+              const m = PLATFORM_META[p];
+              return (
+                <button
+                  key={p}
+                  onClick={() => setNewPlatform(p)}
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono border transition-colors ${
+                    newPlatform === p
+                      ? "border-primary/50 bg-primary/10 text-primary"
+                      : "border-border/30 bg-muted/5 text-muted-foreground hover:bg-muted/10"
+                  }`}
+                >
+                  <span className={m.color}>{m.icon}</span>
+                  {m.label}
+                </button>
+              );
+            })}
+            {SOON_PLATFORMS.map((p) => {
+              const m = PLATFORM_META[p];
+              return (
+                <span
+                  key={p}
+                  title="Yakında"
+                  className="flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono border border-border/20 bg-muted/5 text-muted-foreground/40 cursor-not-allowed"
+                >
+                  <span>{m.icon}</span>
+                  {m.label}
+                  <span className="text-[8px] opacity-60">yakında</span>
+                </span>
+              );
+            })}
+          </div>
 
-        {/* Helper note */}
-        <div className="text-[8px] font-mono text-muted-foreground/60 italic">{meta.note}</div>
+          {/* Helper note */}
+          <div className="text-[8px] font-mono text-muted-foreground/60 italic">{meta.note}</div>
 
-        {/* Inputs */}
-        <div className="flex gap-1.5">
-          <input
-            value={newUsername}
-            onChange={(e) => setNewUsername(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addAccount()}
-            placeholder={meta.placeholder}
-            className="flex-1 min-w-0 px-2 py-1 text-[10px] font-mono bg-muted/10 border border-border/40 rounded focus:outline-none focus:border-primary/50"
-          />
-          <input
-            value={newDisplayName}
-            onChange={(e) => setNewDisplayName(e.target.value)}
-            placeholder="Görünen ad (opsiyonel)"
-            className="flex-1 min-w-0 px-2 py-1 text-[10px] font-mono bg-muted/10 border border-border/40 rounded focus:outline-none focus:border-primary/50"
-          />
-          <button
-            onClick={addAccount}
-            disabled={isSaving || !newUsername.trim()}
-            className="px-2 py-1 bg-primary/90 hover:bg-primary text-primary-foreground rounded text-[10px] font-mono flex items-center gap-1 disabled:opacity-50"
-          >
-            <Plus size={10} />
-            {isSaving ? "…" : "Ekle"}
-          </button>
+          {/* Inputs */}
+          <div className="flex gap-1.5">
+            <input
+              value={newUsername}
+              onChange={(e) => setNewUsername(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addAccount()}
+              placeholder={meta.placeholder}
+              className="flex-1 min-w-0 px-2 py-1 text-[10px] font-mono bg-muted/10 border border-border/40 rounded focus:outline-none focus:border-primary/50"
+            />
+            <input
+              value={newDisplayName}
+              onChange={(e) => setNewDisplayName(e.target.value)}
+              placeholder="Görünen ad (opsiyonel)"
+              className="flex-1 min-w-0 px-2 py-1 text-[10px] font-mono bg-muted/10 border border-border/40 rounded focus:outline-none focus:border-primary/50"
+            />
+            <button
+              onClick={addAccount}
+              disabled={isSaving || !newUsername.trim()}
+              className="px-2 py-1 bg-primary/90 hover:bg-primary text-primary-foreground rounded text-[10px] font-mono flex items-center gap-1 disabled:opacity-50"
+            >
+              <Plus size={10} />
+              {isSaving ? "…" : "Ekle"}
+            </button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="text-[9px] font-mono text-muted-foreground/60">
+          Hesap ekleme ve düzenleme analyst veya admin hesabı gerektirir.
+        </div>
+      )}
 
       {/* Account list */}
       {accounts.length === 0 ? (
@@ -244,22 +254,29 @@ export const MonitoredAccountsPanel = () => {
                 </div>
 
                 {/* Toggle active */}
-                <button
-                  onClick={() => toggleActive(acc)}
-                  className={`shrink-0 ${acc.is_active ? "text-green-500" : "text-muted-foreground/40"} hover:opacity-80`}
-                  title={acc.is_active ? "İzlemeyi durdur" : "İzlemeyi başlat"}
-                >
-                  {acc.is_active ? <CheckCircle2 size={12} /> : <Circle size={12} />}
-                </button>
+                {canManageIntelligence ? (
+                  <button
+                    onClick={() => toggleActive(acc)}
+                    className={`shrink-0 ${acc.is_active ? "text-green-500" : "text-muted-foreground/40"} hover:opacity-80`}
+                    title={acc.is_active ? "İzlemeyi durdur" : "İzlemeyi başlat"}
+                  >
+                    {acc.is_active ? <CheckCircle2 size={12} /> : <Circle size={12} />}
+                  </button>
+                ) : acc.is_active ? (
+                  <CheckCircle2 size={12} className="shrink-0 text-green-500" />
+                ) : (
+                  <Circle size={12} className="shrink-0 text-muted-foreground/40" />
+                )}
 
-                {/* Delete */}
-                <button
-                  onClick={() => deleteAccount(acc.id)}
-                  className="shrink-0 text-muted-foreground/30 hover:text-red-400 transition-colors"
-                  title="Kaldır"
-                >
-                  <Trash2 size={10} />
-                </button>
+                {canManageIntelligence && (
+                  <button
+                    onClick={() => deleteAccount(acc.id)}
+                    className="shrink-0 text-muted-foreground/30 hover:text-red-400 transition-colors"
+                    title="Kaldır"
+                  >
+                    <Trash2 size={10} />
+                  </button>
+                )}
               </div>
             );
           })}
