@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel";
 import { Link, useNavigate } from "react-router-dom";
-import { socialIntelService, LocalAnalysisItem } from "@/services/social-intel-service";
+import { socialIntelService, LocalAnalysisItem, SocialDataMode } from "@/services/social-intel-service";
 import { OSINTCenter } from "@/components/social/OSINTCenter";
 import { Radio, TrendingUp, Hash, ArrowLeft, RefreshCw, Globe, Sparkles, ChartBar as BarChart3, TriangleAlert as AlertTriangle, Newspaper, MapPin, Shield, Calendar, Loader as Loader2, ExternalLink, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -14,7 +14,6 @@ import { TrendChart, generateTrendFromAnalyses } from "@/components/social/Trend
 import { SentimentHistoryChart } from "@/components/social/SentimentHistoryChart";
 import { NewsDataCorrelation } from "@/components/social/NewsDataCorrelation";
 import { SourceReliability, calculateReliability } from "@/components/social/SourceReliability";
-import { WeeklyComparison, generateComparisonData } from "@/components/social/WeeklyComparison";
 import { LiveFeedIndicator } from "@/components/social/LiveFeedIndicator";
 import { relativeTime, detectRegion } from "@/lib/time-utils";
 import { SocialRegionMap, generateRegionMapData } from "@/components/social/SocialRegionMap";
@@ -38,6 +37,43 @@ const platformIcons: Record<string, React.ReactNode> = {
   twitter: <Radio size={10} />,
 };
 
+const modePresentation: Record<SocialDataMode | "loading", {
+  dotClass: string;
+  textClass: string;
+  containerClass: string;
+  label: string;
+  detail: string;
+}> = {
+  loading: {
+    dotClass: "bg-muted-foreground/40",
+    textClass: "text-muted-foreground",
+    containerClass: "bg-muted/5 border-border/30",
+    label: "KAYNAKLAR DENETLENİYOR",
+    detail: "Canlı veri kaynaklarından yanıt bekleniyor",
+  },
+  live: {
+    dotClass: "bg-green-500 animate-pulse",
+    textClass: "text-green-500",
+    containerClass: "bg-green-500/5 border-green-500/20",
+    label: "CANLI KAYNAK MODU",
+    detail: "Canlı kaynak yanıtları • Client-side duygu analizi",
+  },
+  demo: {
+    dotClass: "bg-amber-400",
+    textClass: "text-amber-400",
+    containerClass: "bg-amber-500/5 border-amber-500/20",
+    label: "DEMO MODU",
+    detail: "Açıkça etiketlenmiş örnek içerik • Gerçek olay değildir",
+  },
+  unavailable: {
+    dotClass: "bg-red-400",
+    textClass: "text-red-400",
+    containerClass: "bg-red-500/5 border-red-500/20",
+    label: "KAYNAK KULLANILAMIYOR",
+    detail: "Sahte fallback kapalı • Doğrulanmış veri bekleniyor",
+  },
+};
+
 const SocialIntel = () => {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<"feed" | "osint" | "network">("feed");
@@ -45,9 +81,10 @@ const SocialIntel = () => {
   const [analyses, setAnalyses] = useState<LocalAnalysisItem[]>([]);
   const [isCollecting, setIsCollecting] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [dataMode, setDataMode] = useState<SocialDataMode | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [protocolFilter, setProtocolFilter] = useState<string | null>(null);
-  const [listeningStatus, setListeningStatus] = useState("Yerel veri kaynakları dinleniyor...");
+  const [listeningStatus, setListeningStatus] = useState("Canlı veri kaynakları denetleniyor...");
   const [filters, setFilters] = useState<SocialFilters>({
     platform: "all",
     sentiment: "all",
@@ -56,23 +93,30 @@ const SocialIntel = () => {
     keyword: "",
   });
   const { toast } = useToast();
+  const mode = modePresentation[dataMode ?? "loading"];
 
-  // Collect and analyze data — local only, no Supabase
   const collectData = useCallback(async () => {
     if (isCollecting) return;
     const activeKeywords = keywords.length > 0 ? keywords : ["Muğla", "Bodrum", "Fethiye", "Marmaris"];
     setIsCollecting(true);
-    setListeningStatus("Yerel veri kaynakları taranıyor...");
+    setListeningStatus("Canlı veri kaynakları taranıyor...");
 
     try {
       const result = await socialIntelService.collectAndAnalyze(activeKeywords, "all");
+      setDataMode(result.mode);
 
       if (result.analyses.length > 0) {
         setAnalyses(result.analyses);
         setLastUpdate(new Date());
-        setListeningStatus(`${result.analyses.length} içerik yerel olarak analiz edildi`);
+        setListeningStatus(
+          result.mode === "demo"
+            ? `DEMO MODU: ${result.analyses.length} örnek içerik`
+            : `${result.analyses.length} canlı içerik analiz edildi`
+        );
       } else {
-        setListeningStatus("Yerel veri kaynakları dinleniyor...");
+        setAnalyses([]);
+        setLastUpdate(null);
+        setListeningStatus("Canlı kaynaklardan doğrulanmış veri alınamadı");
       }
 
       // Surface critical alerts
@@ -91,8 +135,11 @@ const SocialIntel = () => {
         });
       }
     } catch (e) {
-      setListeningStatus("Yerel veri kaynakları dinleniyor...");
-      toast({ title: "Analiz hatası", description: "Yerel analiz işleminde hata oluştu", variant: "destructive" });
+      setDataMode("unavailable");
+      setAnalyses([]);
+      setLastUpdate(null);
+      setListeningStatus("Canlı veri kaynakları kullanılamıyor");
+      toast({ title: "Analiz hatası", description: "Canlı veri analizi sırasında hata oluştu", variant: "destructive" });
     } finally {
       setIsCollecting(false);
     }
@@ -103,7 +150,6 @@ const SocialIntel = () => {
     notificationService.init();
   }, []);
 
-  // Initial load with local data
   useEffect(() => {
     collectData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -156,27 +202,6 @@ const SocialIntel = () => {
   // Region map data
   const regionMapData = useMemo(() => generateRegionMapData(filtered), [filtered]);
 
-  const comparisonData = useMemo(() => {
-    const currentByRegion: Record<string, { count: number; sentimentAvg: number }> = {};
-    for (const item of filtered) {
-      const region = detectRegion(item.content) || "Diğer";
-      if (!currentByRegion[region]) currentByRegion[region] = { count: 0, sentimentAvg: 0 };
-      currentByRegion[region].count++;
-      currentByRegion[region].sentimentAvg += item.sentiment === "positive" ? 1 : item.sentiment === "negative" ? -1 : 0;
-    }
-    for (const r of Object.values(currentByRegion)) {
-      r.sentimentAvg = r.count > 0 ? r.sentimentAvg / r.count : 0;
-    }
-    const prevByRegion: Record<string, { count: number; sentimentAvg: number }> = {};
-    for (const [region, data] of Object.entries(currentByRegion)) {
-      prevByRegion[region] = {
-        count: Math.max(0, data.count + Math.floor((Math.random() - 0.5) * 4)),
-        sentimentAvg: Math.max(-1, Math.min(1, data.sentimentAvg + (Math.random() - 0.5) * 0.3)),
-      };
-    }
-    return generateComparisonData(currentByRegion, prevByRegion);
-  }, [filtered]);
-
   return (
     <div className="min-h-screen bg-background">
       <DashboardHeader activeTab="sosyal" onTabChange={(tab) => navigate(tab === "sosyal" ? "/social-intel" : "/?tab=" + tab)} />
@@ -194,15 +219,14 @@ const SocialIntel = () => {
                 Sosyal Medya İstihbarat Merkezi
               </h2>
               <p className="text-[9px] font-mono text-muted-foreground mt-0.5">
-                Yerel Veri İşleme (Local Logic) — Client-side analiz
+                Canlı kaynak taraması — Client-side duygu analizi
               </p>
             </div>
           </div>
 
-          {/* Local status indicator */}
           <div className="flex items-center gap-1.5 mr-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-            <span className="text-[9px] font-mono text-green-500/80">{listeningStatus}</span>
+            <span className={`w-1.5 h-1.5 rounded-full ${mode.dotClass}`}></span>
+            <span className={`text-[9px] font-mono ${mode.textClass}`}>{listeningStatus}</span>
           </div>
 
           {/* Section toggle */}
@@ -257,7 +281,7 @@ const SocialIntel = () => {
               className="text-[10px] font-mono px-3 py-1.5 rounded-lg bg-green-500/10 text-green-500 border border-green-500/30 hover:bg-green-500/20 disabled:opacity-40 flex items-center gap-1.5"
             >
               {isCollecting ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />}
-              {isCollecting ? "Analiz Ediliyor..." : "CANLI ANALİZ BAŞLAT"}
+              {isCollecting ? "Analiz Ediliyor..." : dataMode === "demo" ? "DEMO ANALİZİ YENİLE" : "CANLI ANALİZ BAŞLAT"}
             </button>
           </div>
         </div>
@@ -277,6 +301,23 @@ const SocialIntel = () => {
 
         {activeSection === "feed" && (
           <>
+        {dataMode === "demo" && (
+          <div className="rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2">
+            <p className="text-[10px] font-mono font-bold text-amber-300">DEMO MODU — ÖRNEK VERİ</p>
+            <p className="text-[9px] font-mono text-amber-100/70 mt-0.5">
+              Gösterilen içerikler canlı kaynaklardan gelmez ve gerçek olay olarak yorumlanmamalıdır.
+            </p>
+          </div>
+        )}
+
+        {dataMode === "unavailable" && (
+          <div className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2">
+            <p className="text-[10px] font-mono font-bold text-red-300">CANLI VERİ KULLANILAMIYOR</p>
+            <p className="text-[9px] font-mono text-red-100/70 mt-0.5">
+              Sahte içerik gösterilmedi. Kaynaklar yeniden erişilebilir olduğunda veriler güncellenecektir.
+            </p>
+          </div>
+        )}
 
         {/* Quick stats */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -321,7 +362,7 @@ const SocialIntel = () => {
               <div className="space-y-2 max-h-[500px] overflow-y-auto">
                 {filtered.length === 0 ? (
                   <div className="text-center py-6 text-[10px] font-mono text-muted-foreground/50">
-                    {isCollecting ? "Yerel veriler analiz ediliyor..." : "Filtre kriterlerine uygun sonuç bulunamadı"}
+                    {isCollecting ? "Canlı veriler analiz ediliyor..." : "Filtre kriterlerine uygun sonuç bulunamadı"}
                   </div>
                 ) : (
                   filtered.map((item, i) => (
@@ -333,6 +374,11 @@ const SocialIntel = () => {
                             <span className="text-[9px] font-mono text-muted-foreground">
                               {platformLabels[item.platform] || item.platform}
                             </span>
+                            {dataMode === "demo" && (
+                              <span className="text-[8px] font-mono font-bold text-amber-300 border border-amber-400/30 bg-amber-400/10 rounded px-1">
+                                DEMO VERİSİ
+                              </span>
+                            )}
                             <span className="text-[8px] font-mono text-muted-foreground/50">•</span>
                             <span className="text-[9px] font-mono text-muted-foreground/60">
                               {item.source_author}
@@ -408,7 +454,9 @@ const SocialIntel = () => {
 
             {/* Weekly Comparison */}
             <DashboardPanel title="Haftalık Karşılaştırma" subtitle="Bu hafta vs Geçen hafta">
-              <WeeklyComparison data={comparisonData} />
+              <p className="text-[9px] font-mono text-muted-foreground text-center py-3">
+                Doğrulanmış geçmiş veri oluştuğunda haftalık karşılaştırma gösterilecektir.
+              </p>
             </DashboardPanel>
 
             {/* AI Summary */}
@@ -417,7 +465,9 @@ const SocialIntel = () => {
                 {analyses.length > 0 ? (
                   <>
                     <p className="text-[10px] font-mono text-foreground/80 leading-relaxed">
-                      <span className="text-primary font-bold">Bugün Muğla'da:</span>{" "}
+                      <span className="text-primary font-bold">
+                        {dataMode === "demo" ? "Demo özeti:" : "Bugün Muğla'da:"}
+                      </span>{" "}
                       {analyses.length} sosyal medya içeriği yerel olarak analiz edildi.{" "}
                       {stats.positive > stats.negative
                         ? "Genel duygu olumlu — bölgede pozitif gelişmeler ağırlıkta."
@@ -441,21 +491,18 @@ const SocialIntel = () => {
                   </>
                 ) : (
                   <p className="text-[10px] font-mono text-muted-foreground/50">
-                    {isCollecting ? "Yerel veriler analiz ediliyor..." : "CANLI ANALİZ BAŞLAT butonuna basarak analizi başlatabilirsiniz"}
+                    {isCollecting ? "Canlı veriler analiz ediliyor..." : "CANLI ANALİZ BAŞLAT butonuna basarak analizi başlatabilirsiniz"}
                   </p>
                 )}
               </div>
             </DashboardPanel>
 
-            {/* Local processing status */}
-            <div className="p-2 rounded-lg bg-green-500/5 border border-green-500/20">
+            <div className={`p-2 rounded-lg border ${mode.containerClass}`}>
               <div className="flex items-center gap-1.5 mb-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                <span className="text-[9px] font-mono text-green-500 font-bold">YEREL ISLEM MODU</span>
+                <span className={`w-1.5 h-1.5 rounded-full ${mode.dotClass}`}></span>
+                <span className={`text-[9px] font-mono font-bold ${mode.textClass}`}>{mode.label}</span>
               </div>
-              <p className="text-[9px] font-mono text-muted-foreground">
-                Dış sunucu bağımlılığı yok • Client-side analiz • Yerel veri tabanı
-              </p>
+              <p className="text-[9px] font-mono text-muted-foreground">{mode.detail}</p>
             </div>
           </div>
         </div>
@@ -465,10 +512,10 @@ const SocialIntel = () => {
         {/* Footer */}
         <footer className="mt-4 py-3 border-t border-border/50 text-center space-y-1">
           <p className="text-[10px] font-mono text-muted-foreground">
-            MUĞLA MONİTÖR v1.0 — Sosyal Medya İstihbarat Modülü — Yerel İşleme (Local Logic)
+            MUĞLA MONİTÖR v1.0 — Sosyal Medya İstihbarat Modülü
           </p>
-          <p className="text-[9px] font-mono text-green-500/70">
-            Dış sunucu bağımlılığı yok • Client-side analiz • CORS hatası yok
+          <p className="text-[9px] font-mono text-muted-foreground/70">
+            Canlı, demo ve kullanılamıyor durumları birbirinden açıkça ayrılır
           </p>
         </footer>
       </div>

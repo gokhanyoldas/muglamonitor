@@ -83,7 +83,23 @@ export interface LocalCollectedItem {
   matched_keywords?: string[];
 }
 
-// Fallback static data for Mugla — used only when live sources are unavailable
+export type SocialDataMode = "live" | "demo" | "unavailable";
+
+export interface LocalCollectionResult {
+  items: LocalCollectedItem[];
+  mode: SocialDataMode;
+  issues: string[];
+}
+
+export interface LocalIntelligenceResult {
+  collectedItems: LocalCollectedItem[];
+  analyses: LocalAnalysisItem[];
+  alerts: LocalAlertItem[];
+  trend_summary: LocalTrendSummary;
+  mode: SocialDataMode;
+  issues: string[];
+}
+
 const MUGLA_LOCAL_DATA: { platform: string; content: string; author: string }[] = [
   { platform: "news", content: "Muğla Büyükşehir Belediyesi yeni ulaşım projesini açıkladı", author: "Muğla Haber" },
   { platform: "news", content: "Bodrum'da turizm sezonu rekor kırıyor — otel doluluk %95 üstü", author: "Bodrum Gazetesi" },
@@ -107,9 +123,12 @@ const MUGLA_LOCAL_DATA: { platform: string; content: string; author: string }[] 
   { platform: "news", content: "Seydikemer'de tarım kooperatifi yeni pazar anlaşması imzaladı", author: "Tarım Gazetesi" },
 ];
 
-class SocialIntelService {
-  // Generate items from local fallback data
-  generateLocalItems(keywords: string[], platforms: string[] = ["news", "twitter", "reddit", "eksisozluk"]): LocalCollectedItem[] {
+export class SocialIntelService {
+  constructor(
+    private readonly demoMode = import.meta.env.VITE_DEMO_MODE === "true"
+  ) {}
+
+  generateDemoItems(keywords: string[], platforms: string[] = ["news", "twitter", "reddit", "eksisozluk"]): LocalCollectedItem[] {
     const filtered = MUGLA_LOCAL_DATA.filter((item) => {
       const matchesPlatform = platforms.includes("all") || platforms.includes(item.platform);
       const matchesKeyword =
@@ -119,21 +138,21 @@ class SocialIntelService {
             item.content.toLowerCase().includes(kw.toLowerCase()) ||
             item.author.toLowerCase().includes(kw.toLowerCase())
         );
-      return matchesPlatform && (matchesKeyword || Math.random() > 0.5);
+      return matchesPlatform && matchesKeyword;
     });
 
-    return filtered.map((item, i) => ({
+    return filtered.map((item) => ({
       platform: item.platform,
       content: item.content,
-      description: `${item.platform.toUpperCase()} — ${item.author}`,
+      description: `DEMO VERİSİ — ${item.platform.toUpperCase()} — ${item.author}`,
       source_author: item.author,
-      source_url: `https://example.com/${item.platform}/${i}`,
       matched_keywords: keywords.filter((kw) => item.content.toLowerCase().includes(kw.toLowerCase())),
     }));
   }
 
-  // Fetch live data from Supabase edge functions; fall back to local mock on failure
-  async collectData(keywords: string[], platforms: string[] = ["news", "twitter", "reddit", "eksisozluk"]): Promise<LocalCollectedItem[]> {
+  async collectData(keywords: string[], platforms: string[] = ["news", "twitter", "reddit", "eksisozluk"]): Promise<LocalCollectionResult> {
+    const issues: string[] = [];
+
     try {
       const [newsResult, socialResult] = await Promise.allSettled([
         supabase.functions.invoke("data-scrape", { body: { type: "news" } }),
@@ -166,9 +185,10 @@ class SocialIntelService {
             });
           }
         }
+      } else {
+        issues.push("Haber kaynağına ulaşılamadı");
       }
 
-      // --- Canlı Feed: YouTube / Twitter / Facebook from social-platforms ---
       if (socialResult.status === "fulfilled" && !socialResult.value.error) {
         const raw = socialResult.value.data;
         const data = (raw?.data ?? raw) as Record<string, unknown> | null;
@@ -190,17 +210,30 @@ class SocialIntelService {
             ),
           });
         }
+      } else {
+        issues.push("Sosyal medya kaynağına ulaşılamadı");
       }
 
-      // Return live data if we got anything
-      if (items.length > 0) return items;
-    } catch {
-      // Fall through to local fallback
+      if (items.length > 0) {
+        return { items, mode: "live", issues };
+      }
+    } catch (error) {
+      issues.push(error instanceof Error ? error.message : "Canlı veri toplama hatası");
     }
 
-    // Fallback: simulate slight delay then return static mock
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    return this.generateLocalItems(keywords, platforms);
+    if (this.demoMode) {
+      return {
+        items: this.generateDemoItems(keywords, platforms),
+        mode: "demo",
+        issues,
+      };
+    }
+
+    return {
+      items: [],
+      mode: "unavailable",
+      issues: issues.length > 0 ? issues : ["Canlı kaynaklar içerik döndürmedi"],
+    };
   }
 
   async analyzeSentiment(texts: string[]): Promise<AnalysisResult> {
@@ -240,22 +273,20 @@ class SocialIntelService {
   async collectAndAnalyze(
     keywords: string[],
     platform: string = "all"
-  ): Promise<{
-    collectedItems: LocalCollectedItem[];
-    analyses: LocalAnalysisItem[];
-    alerts: LocalAlertItem[];
-    trend_summary: LocalTrendSummary;
-  }> {
+  ): Promise<LocalIntelligenceResult> {
     const platforms = platform === "all" ? ["news", "twitter", "reddit", "eksisozluk", "youtube", "facebook"] : [platform];
 
-    const collectedItems = await this.collectData(keywords, platforms);
+    const collection = await this.collectData(keywords, platforms);
+    const collectedItems = collection.items;
 
     if (collectedItems.length === 0) {
       return {
         collectedItems: [],
         analyses: [],
-        alerts: [{ label: "Veri Bulunamadı", value: "Yerel veri kaynaklarından veri çekilemedi", severity: "warning" }],
+        alerts: [{ label: "Veri Bulunamadı", value: "Canlı veri kaynaklarından doğrulanmış içerik alınamadı", severity: "warning" }],
         trend_summary: this.emptyTrendSummary(),
+        mode: collection.mode,
+        issues: collection.issues,
       };
     }
 
@@ -270,7 +301,7 @@ class SocialIntelService {
         sentiment: sentimentResult?.sentiment || "neutral",
         sentiment_score: sentimentResult?.confidence || 0.5,
         source_author: item.source_author,
-        engagement_count: Math.floor(Math.random() * 150) + 10,
+        engagement_count: 0,
         summary: item.description,
         source_url: item.source_url,
       };
@@ -291,6 +322,8 @@ class SocialIntelService {
       analyses,
       alerts,
       trend_summary: this.buildTrendSummary(analyses),
+      mode: collection.mode,
+      issues: collection.issues,
     };
   }
 
