@@ -519,7 +519,10 @@ Deno.serve(async (req: Request) => {
 
     // Create supabase client for DB-sourced scrapers
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseKey) {
+      throw new Error("Server configuration is incomplete");
+    }
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const fetchers: Promise<CollectedPost[]>[] = [];

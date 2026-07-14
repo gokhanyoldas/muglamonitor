@@ -3,6 +3,9 @@ project_id = "wivooargsmcwbiokpklu"
 [functions.data-scrape]
 verify_jwt = false
 
+[functions.email-alerts-ingest]
+verify_jwt = true
+
 [functions.reference-data]
 verify_jwt = false
 
